@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { LiturgicalThemeProvider } from "@/components/LiturgicalThemeProvider";
 import { Navbar } from "@/components/Navbar";
 
 const geistSans = Geist({
@@ -32,10 +33,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <ThemeProvider>
-          <Navbar />
-          <div className="flex-1">
-            {children}
-          </div>
+          <LiturgicalThemeProvider>
+            <Navbar />
+            <div className="flex-1">
+              {children}
+            </div>
+          </LiturgicalThemeProvider>
         </ThemeProvider>
       </body>
     </html>

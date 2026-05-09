@@ -31,7 +31,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
             {segmentos.map((seg, idx) => (
               <div key={idx} className="flex flex-col items-start">
                 {temAcordes && (
-                  <span className="text-blue-600 dark:text-blue-400 font-bold min-h-[1.5rem] pr-1 font-mono text-base">
+                  <span className="text-primary-600 dark:text-primary-400 font-bold min-h-[1.5rem] pr-1 font-mono text-base">
                     {seg.acorde || '\u00A0'}
                   </span>
                 )}

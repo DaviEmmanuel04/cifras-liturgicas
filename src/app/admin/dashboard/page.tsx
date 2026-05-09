@@ -67,7 +67,7 @@ export default function DashboardPage() {
         <div className="flex gap-4">
           <Link 
             href="/admin/musica/nova"
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={20} />
             <span>Nova Cifra</span>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
                     <td className="p-4 flex justify-end gap-3">
                       <Link 
                         href={`/admin/musica/${musica.id}/editar`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                        className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded transition-colors"
                         title="Editar"
                       >
                         <Edit2 size={18} />

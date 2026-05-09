@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getLiturgicalDay } from "@/app/actions";
 
 type Musica = {
   id: string;
@@ -59,8 +60,8 @@ export function MusicaList() {
   useEffect(() => {
     async function fetchLiturgicalTime() {
       try {
-        const res = await fetch("http://calapi.inadiutorium.cz/api/v0/en/calendars/default/today");
-        const data = await res.json();
+        const data = await getLiturgicalDay();
+        if (!data) return;
         const translatedSeason = seasonMap[data.season];
         
         // If the API season is in our unique times, set it as default
@@ -96,7 +97,7 @@ export function MusicaList() {
             placeholder="Buscar música..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
+            className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
           />
         </div>
 
@@ -105,7 +106,7 @@ export function MusicaList() {
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
-            className="flex-1 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
+            className="flex-1 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
           >
             <option value="">Todas as Categorias</option>
             {categoriasUnicas.map((cat) => (
@@ -118,7 +119,7 @@ export function MusicaList() {
           <select
             value={tempo}
             onChange={(e) => setTempo(e.target.value)}
-            className="flex-1 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
+            className="flex-1 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
           >
             <option value="">Todos os Tempos</option>
             {temposUnicos.map((t) => (
@@ -133,14 +134,14 @@ export function MusicaList() {
       <div className="grid gap-4">
         {loading ? (
           <div className="text-center py-10">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
             <p className="mt-2 text-gray-500 dark:text-gray-400">Buscando cifras...</p>
           </div>
         ) : musicasFiltradas.length > 0 ? (
           musicasFiltradas.map((musica) => (
             <Link href={`/musica/${musica.id}`} key={musica.id}>
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-500 group">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-primary-500 group">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                   {musica.titulo}
                 </h2>
                 <div className="flex flex-wrap gap-2 mt-3 text-xs">
@@ -150,7 +151,7 @@ export function MusicaList() {
                   <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
                     {musica.tempo}
                   </span>
-                  <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded font-mono font-bold">
+                  <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded font-mono font-bold">
                     Tom: {musica.tom}
                   </span>
                 </div>

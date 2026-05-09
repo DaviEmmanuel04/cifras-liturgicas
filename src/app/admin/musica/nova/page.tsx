@@ -93,7 +93,7 @@ export default function NovaMusicaPage() {
                   required
                   value={formData.titulo}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
                   placeholder="Ex: Senhor, tende piedade"
                 />
               </div>
@@ -105,7 +105,7 @@ export default function NovaMusicaPage() {
                   required
                   value={formData.categoria}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="" disabled>Selecione uma categoria</option>
                   {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -119,7 +119,7 @@ export default function NovaMusicaPage() {
                   required
                   value={formData.tempo}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="" disabled>Selecione um tempo</option>
                   {tempos.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -134,7 +134,7 @@ export default function NovaMusicaPage() {
                   required
                   value={formData.tom}
                   onChange={handleChange}
-                  className="w-full md:w-1/3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full md:w-1/3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
                   placeholder="Ex: C, F#m, Bb..."
                 />
               </div>
@@ -162,7 +162,7 @@ export default function NovaMusicaPage() {
                   rows={15}
                   value={formData.letraCifra}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                   placeholder="Cole a letra com cifras aqui..."
                 ></textarea>
               </div>
@@ -172,7 +172,7 @@ export default function NovaMusicaPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
@@ -205,7 +205,7 @@ export default function NovaMusicaPage() {
                   <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">{formData.tempo}</span>
                 )}
                 {formData.tom && (
-                  <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded font-mono font-bold">Tom: {formData.tom}</span>
+                  <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded font-mono font-bold">Tom: {formData.tom}</span>
                 )}
               </div>
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700 overflow-x-auto">

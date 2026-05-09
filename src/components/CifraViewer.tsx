@@ -46,13 +46,20 @@ export function CifraViewer({ musica }: { musica: Musica }) {
 
   return (
     <div className="pb-32">
-      <div id="cifra-content">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+      <div id="cifra-content" className="relative">
+        {/* Marca d'água apenas para impressão */}
+        <div className="hidden print:flex fixed inset-0 items-center justify-center pointer-events-none opacity-[0.04] z-0 overflow-hidden">
+          <span className="text-[12rem] font-black -rotate-45 whitespace-nowrap text-black">
+            CIFRAS LITÚRGICAS
+          </span>
+        </div>
+        
+        <div className="relative z-10 bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{musica.titulo}</h1>
         <div className="flex flex-wrap gap-2 mt-4 text-sm">
           <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.categoria}</span>
           <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.tempo}</span>
-          <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-mono font-bold transition-colors">
+          <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full font-mono font-bold transition-colors">
             Tom: {tomAtual}
           </span>
         </div>
@@ -95,7 +102,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           onClick={() => setIsScrolling(!isScrolling)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors ${
             isScrolling 
-              ? 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600' 
+              ? 'bg-primary-600 hover:bg-primary-700 text-white dark:bg-primary-500 dark:hover:bg-primary-600' 
               : 'hover:bg-gray-800 dark:hover:bg-gray-200'
           }`}
         >

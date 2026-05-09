@@ -37,7 +37,7 @@ export default function MusicaPage({ params }: { params: Promise<{ id: string }>
     return (
       <div className="min-h-[50vh] flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
           <p className="mt-2 text-gray-500 dark:text-gray-400">Carregando cifra...</p>
         </div>
       </div>
@@ -48,7 +48,7 @@ export default function MusicaPage({ params }: { params: Promise<{ id: string }>
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Cifra não encontrada</h1>
-        <Link href="/" className="text-blue-600 dark:text-blue-400 hover:underline">
+        <Link href="/" className="text-primary-600 dark:text-primary-400 hover:underline">
           &larr; Voltar para a lista
         </Link>
       </div>
@@ -60,7 +60,7 @@ export default function MusicaPage({ params }: { params: Promise<{ id: string }>
       <div className="max-w-3xl mx-auto">
         <Link 
           href="/" 
-          className="inline-block mb-6 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors"
+          className="print:hidden inline-block mb-6 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium transition-colors"
         >
           &larr; Voltar para a lista
         </Link>

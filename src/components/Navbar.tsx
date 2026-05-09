@@ -16,7 +16,7 @@ export function Navbar() {
   return (
     <nav className="print:hidden border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors duration-200">
       <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xl hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold text-xl hover:opacity-80 transition-opacity">
           <Music size={24} />
           <span>Cifras Litúrgicas</span>
         </Link>
