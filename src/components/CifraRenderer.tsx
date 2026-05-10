@@ -6,12 +6,57 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
   return (
     <div className="font-sans">
       {linhas.map((linha, indexLinha) => {
-        if (!linha.trim() && !linha.includes('[')) {
+        const linhaTrim = linha.trim();
+        
+        // 1. Linhas Vazias
+        if (!linhaTrim && !linha.includes('[')) {
           return <div key={indexLinha} className="h-6"></div>;
         }
 
         const temAcordes = linha.includes('[');
+        
+        // 2. Títulos de Seção (Refrão:, Intro:, **Ponte**)
+        if (!temAcordes && (linhaTrim.endsWith(':') || (linhaTrim.startsWith('**') && linhaTrim.endsWith('**')))) {
+          const textoLimpo = linhaTrim.replace(/\*\*/g, '');
+          return (
+            <h3 key={indexLinha} className="font-bold text-primary-600 dark:text-primary-400 mt-6 mb-2 text-xl">
+              {textoLimpo}
+            </h3>
+          );
+        }
+
+        // 3. Verifica Modo Instrumental (só acordes e símbolos)
+        const textWithoutChords = linha.replace(/\[.*?\]/g, '').trim();
+        const isInstrumental = temAcordes && (textWithoutChords.length === 0 || /^[-|/\s]+$/.test(textWithoutChords));
+
         const partes = linha.split(/(\[.*?\])/g);
+        
+        if (isInstrumental) {
+          return (
+            <div key={indexLinha} className="flex flex-wrap items-center min-h-[2rem] mt-2 mb-2">
+              {partes.map((parte, idx) => {
+                if (parte.startsWith('[') && parte.endsWith(']')) {
+                  const acordeCru = parte.slice(1, -1);
+                  const acorde = transporAcorde(acordeCru, semitons);
+                  return (
+                    <span key={idx} className="text-primary-600 dark:text-primary-400 font-bold font-mono text-lg">
+                      {acorde}
+                    </span>
+                  );
+                } else if (parte.length > 0) {
+                  return (
+                    <span key={idx} className="whitespace-pre text-gray-500 dark:text-gray-400 font-mono text-lg">
+                      {parte}
+                    </span>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          );
+        }
+
+        // 4. Modo Padrão (Acorde sobre a Letra)
         const segmentos: { acorde: string | null; texto: string }[] = [];
         let acordeAtual: string | null = null;
 

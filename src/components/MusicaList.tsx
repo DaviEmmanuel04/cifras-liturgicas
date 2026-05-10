@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
+import { Search, Music } from "lucide-react";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getLiturgicalDay } from "@/app/actions";
 
@@ -30,6 +30,7 @@ export function MusicaList() {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState("");
   const [tempo, setTempo] = useState("");
+  const [repertorioIds, setRepertorioIds] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchMusicas() {
@@ -40,8 +41,14 @@ export function MusicaList() {
           lista.push({ id: doc.id, ...doc.data() } as Musica);
         });
         setMusicas(lista);
+
+        // Busca o repertório do dia
+        const repDoc = await getDoc(doc(db, "config", "repertorio"));
+        if (repDoc.exists() && repDoc.data().musicasIds) {
+          setRepertorioIds(repDoc.data().musicasIds);
+        }
       } catch (error) {
-        console.error("Erro ao buscar músicas do Firebase:", error);
+        console.error("Erro ao buscar dados do Firebase:", error);
       } finally {
         setLoading(false);
       }
@@ -83,6 +90,13 @@ export function MusicaList() {
       return matchBusca && matchCategoria && matchTempo;
     });
   }, [musicas, busca, categoria, tempo]);
+
+  const musicasDoDia = useMemo(() => {
+    return repertorioIds.map(id => musicas.find(m => m.id === id)).filter(Boolean) as Musica[];
+  }, [repertorioIds, musicas]);
+
+  // Ignoramos o "tempo" como filtro que esconde o repertório, pois ele é setado automaticamente pela API
+  const hasFilters = busca || categoria;
 
   return (
     <div>
@@ -130,6 +144,35 @@ export function MusicaList() {
           </select>
         </div>
       </div>
+
+      {!loading && musicasDoDia.length > 0 && !hasFilters && (
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 mb-4">
+            <Music className="text-primary-600 dark:text-primary-400" />
+            Músicas de Hoje
+          </h2>
+          <div className="grid gap-4 border-l-4 border-primary-500 pl-4 py-2">
+            {musicasDoDia.map((musica, index) => (
+              <Link href={`/musica/${musica.id}`} key={`rep-${musica.id}-${index}`}>
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden border border-gray-100 dark:border-gray-700">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-primary-500"></div>
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                      {index + 1}. {musica.titulo}
+                    </h3>
+                    <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded font-mono font-bold text-sm">
+                      {musica.tom}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          
+          <div className="mt-8 mb-4 border-b border-gray-200 dark:border-gray-700"></div>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Acervo Completo</h2>
+        </div>
+      )}
 
       <div className="grid gap-4">
         {loading ? (

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Plus, Edit2, Trash2, LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { RepertorioManager } from "@/components/RepertorioManager";
 
 type Musica = {
   id: string;
@@ -59,7 +60,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Painel de Cifras</h1>
           <p className="text-gray-500 dark:text-gray-400">Gerencie o repertório do aplicativo</p>
@@ -70,19 +71,23 @@ export default function DashboardPage() {
             className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={20} />
-            <span>Nova Cifra</span>
+            <span className="hidden sm:inline">Nova Cifra</span>
           </Link>
           <button 
             onClick={handleLogout}
             className="flex items-center gap-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg transition-colors"
           >
             <LogOut size={20} />
-            <span>Sair</span>
+            <span className="hidden sm:inline">Sair</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {!loading && musicas.length > 0 && (
+        <RepertorioManager musicas={musicas} />
+      )}
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-12">
         {loading ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">Carregando cifras...</div>
         ) : musicas.length === 0 ? (
