@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { transporAcorde } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, Download } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
+import Image from "next/image";
 
 type Musica = {
   id: string;
@@ -49,9 +50,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
       <div id="cifra-content" className="relative">
         {/* Marca d'água apenas para impressão */}
         <div className="hidden print:flex fixed inset-0 items-center justify-center pointer-events-none opacity-[0.04] z-0 overflow-hidden">
-          <span className="text-[12rem] font-black -rotate-45 whitespace-nowrap text-black">
-            CIFRAS LITÚRGICAS
-          </span>
+          <Image src="/logo.png" alt="logo" className="grayscale" width={600} height={600} />
         </div>
         
         <div className="relative z-10 bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
