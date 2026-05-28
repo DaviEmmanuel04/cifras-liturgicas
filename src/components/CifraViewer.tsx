@@ -14,6 +14,10 @@ type Musica = {
   tempo: string;
   tom: string;
   letraCifra: string;
+  criadoPor?: string;
+  criadoEm?: string;
+  modificadoPor?: string;
+  modificadoEm?: string;
 };
 
 export function CifraViewer({ musica }: { musica: Musica }) {
@@ -121,6 +125,38 @@ export function CifraViewer({ musica }: { musica: Musica }) {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors">
           <CifraRenderer texto={musica.letraCifra} semitons={semitons} />
+
+          {/* Rodapé com autoria e modificação (oculto na impressão) */}
+          {(musica.criadoPor || musica.modificadoPor) && (
+            <div className="print:hidden mt-8 pt-4 border-t border-gray-150 dark:border-gray-700/50 text-[10px] text-gray-400 dark:text-gray-500 flex flex-wrap justify-between gap-x-4 gap-y-1">
+              {musica.criadoPor && (
+                <span>
+                  Enviada por: <strong className="text-gray-500 dark:text-gray-400">{musica.criadoPor}</strong>
+                  {musica.criadoEm && (() => {
+                    try {
+                      const d = new Date(musica.criadoEm);
+                      return isNaN(d.getTime()) ? "" : ` em ${d.toLocaleDateString("pt-BR")}`;
+                    } catch {
+                      return "";
+                    }
+                  })()}
+                </span>
+              )}
+              {musica.modificadoPor && (
+                <span>
+                  Última modificação: <strong className="text-gray-500 dark:text-gray-400">{musica.modificadoPor}</strong>
+                  {musica.modificadoEm && (() => {
+                    try {
+                      const d = new Date(musica.modificadoEm);
+                      return isNaN(d.getTime()) ? "" : ` em ${d.toLocaleDateString("pt-BR")}`;
+                    } catch {
+                      return "";
+                    }
+                  })()}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Diagramas no final para impressão */}
           {printDiagrams && uniqueChordsTransposed.length > 0 && (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, use } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Upload } from "lucide-react";
@@ -162,7 +162,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     }
 
     try {
-      await updateDoc(doc(db, "musicas", id), formData);
+      const emailUsuario = auth.currentUser?.email || "admin";
+      const payload = {
+        ...formData,
+        modificadoPor: emailUsuario,
+        modificadoEm: new Date().toISOString()
+      };
+      await updateDoc(doc(db, "musicas", id), payload);
       router.push("/admin/dashboard");
     } catch (error) {
       console.error("Erro ao salvar", error);

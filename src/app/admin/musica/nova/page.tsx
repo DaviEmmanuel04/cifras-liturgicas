@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from "react";
 import { collection, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Upload } from "lucide-react";
@@ -138,7 +138,15 @@ export default function NovaMusicaPage() {
     }
 
     try {
-      await addDoc(collection(db, "musicas"), formData);
+      const emailUsuario = auth.currentUser?.email || "admin";
+      const payload = {
+        ...formData,
+        criadoPor: emailUsuario,
+        criadoEm: new Date().toISOString(),
+        modificadoPor: emailUsuario,
+        modificadoEm: new Date().toISOString()
+      };
+      await addDoc(collection(db, "musicas"), payload);
       router.push("/admin/dashboard");
     } catch (error) {
       console.error("Erro ao salvar", error);

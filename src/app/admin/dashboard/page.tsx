@@ -15,6 +15,8 @@ type Musica = {
   categoria: string;
   tempo: string;
   tom: string;
+  criadoPor?: string;
+  modificadoPor?: string;
 };
 
 export default function DashboardPage() {
@@ -109,7 +111,19 @@ export default function DashboardPage() {
               <tbody>
                 {musicas.map((musica) => (
                   <tr key={musica.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="p-4 font-medium text-gray-800 dark:text-gray-200">{musica.titulo}</td>
+                    <td className="p-4">
+                      <div className="font-semibold text-gray-800 dark:text-gray-200">{musica.titulo}</div>
+                      {(musica.criadoPor || musica.modificadoPor) && (
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                          {musica.criadoPor && (
+                            <span>Criada por: <span className="text-gray-500 dark:text-gray-400 font-medium">{musica.criadoPor}</span></span>
+                          )}
+                          {musica.modificadoPor && (
+                            <span>• Modificada por: <span className="text-gray-500 dark:text-gray-400 font-medium">{musica.modificadoPor}</span></span>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">
                       <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">{musica.categoria}</span>
                     </td>
