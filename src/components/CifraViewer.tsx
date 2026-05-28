@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { transporAcorde } from "@/utils/transposicao";
-import { Minus, Plus, RotateCcw, Play, Pause, Printer, Download } from "lucide-react";
+import { Minus, Plus, RotateCcw, Play, Pause, Printer, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
+import { ChordDiagram } from "./ChordDiagram";
 import Image from "next/image";
 
 type Musica = {
@@ -18,6 +19,8 @@ type Musica = {
 export function CifraViewer({ musica }: { musica: Musica }) {
   const [semitons, setSemitons] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [showDiagrams, setShowDiagrams] = useState(true);
+  const [printDiagrams, setPrintDiagrams] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -39,9 +42,28 @@ export function CifraViewer({ musica }: { musica: Musica }) {
 
   const tomAtual = transporAcorde(musica.tom, semitons);
 
+  // Extrair acordes únicos originais
+  const uniqueChords = useMemo(() => {
+    const regexAcorde = /\[(.*?)\]/g;
+    let match;
+    const acordesBrutos = new Set<string>();
+    while ((match = regexAcorde.exec(musica.letraCifra)) !== null) {
+      const nome = match[1].trim();
+      // Ignorar acordes vazios ou que pareçam marcadores
+      if (nome && !nome.includes(":") && !nome.includes("*")) {
+        acordesBrutos.add(nome);
+      }
+    }
+    return Array.from(acordesBrutos);
+  }, [musica.letraCifra]);
+
+  // Transpor os acordes únicos conforme semitons
+  const uniqueChordsTransposed = useMemo(() => {
+    const transposed = uniqueChords.map(ac => transporAcorde(ac, semitons));
+    return Array.from(new Set(transposed));
+  }, [uniqueChords, semitons]);
+
   const handleDownloadPDF = () => {
-    // Como o Tailwind v4 usa o novo padrão de cores LAB/OKLCH e o html2canvas não suporta,
-    // usamos o print nativo do navegador que permite "Salvar como PDF" perfeitamente e em alta qualidade.
     window.print();
   };
 
@@ -54,19 +76,66 @@ export function CifraViewer({ musica }: { musica: Musica }) {
         </div>
         
         <div className="relative z-10 bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{musica.titulo}</h1>
-        <div className="flex flex-wrap gap-2 mt-4 text-sm">
-          <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.categoria}</span>
-          <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.tempo}</span>
-          <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full font-mono font-bold transition-colors">
-            Tom: {tomAtual}
-          </span>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{musica.titulo}</h1>
+          <div className="flex flex-wrap gap-2 mt-4 text-sm">
+            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.categoria}</span>
+            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.tempo}</span>
+            <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full font-mono font-bold transition-colors">
+              Tom: {tomAtual}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors">
-        <CifraRenderer texto={musica.letraCifra} semitons={semitons} />
-      </div>
+        {/* Painel de Diagramas de Acordes */}
+        {uniqueChordsTransposed.length > 0 && (
+          <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 p-6 transition-colors">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <button
+                onClick={() => setShowDiagrams(!showDiagrams)}
+                className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5"
+              >
+                {showDiagrams ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <span>{showDiagrams ? "Ocultar" : "Mostrar"} Diagramas de Acordes ({uniqueChordsTransposed.length})</span>
+              </button>
+              
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={printDiagrams}
+                  onChange={(e) => setPrintDiagrams(e.target.checked)}
+                  className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+                />
+                <span>Incluir diagramas no final da impressão</span>
+              </label>
+            </div>
+            
+            {showDiagrams && (
+              <div className="flex flex-wrap gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-inner overflow-x-auto">
+                {uniqueChordsTransposed.map((acorde) => (
+                  <ChordDiagram key={acorde} nome={acorde} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors">
+          <CifraRenderer texto={musica.letraCifra} semitons={semitons} />
+
+          {/* Diagramas no final para impressão */}
+          {printDiagrams && uniqueChordsTransposed.length > 0 && (
+            <div className="hidden print:block mt-12 border-t border-gray-300 dark:border-gray-700 pt-6">
+              <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider text-center">
+                Diagramas dos Acordes
+              </h4>
+              <div className="flex flex-wrap justify-center gap-6">
+                {uniqueChordsTransposed.map((acorde) => (
+                  <ChordDiagram key={acorde} nome={acorde} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Barra flutuante de controles */}

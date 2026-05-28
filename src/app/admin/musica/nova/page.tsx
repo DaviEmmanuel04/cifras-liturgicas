@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -88,9 +88,54 @@ export default function NovaMusicaPage() {
     }, 0);
   };
 
+  // Validar acordes na letra em tempo real
+  const acordesInvalidos = useMemo(() => {
+    const regexAcorde = /\[(.*?)\]/g;
+    let match;
+    const invalidos = new Set<string>();
+    while ((match = regexAcorde.exec(formData.letraCifra)) !== null) {
+      const acorde = match[1].trim();
+      if (acorde) {
+        const partes = acorde.split('/');
+        let valido = partes.length <= 2;
+        
+        if (valido) {
+          for (const parte of partes) {
+            const parteLimpa = parte.replace(/[\(\)]/g, "").trim();
+            const m = parteLimpa.match(/^([CDEFGAB][#b]?)(.*)$/);
+            if (!m) {
+              valido = false;
+              break;
+            }
+            const resto = m[2];
+            if (resto && !/^[a-zA-Z0-9+\-]*$/.test(resto)) {
+              valido = false;
+              break;
+            }
+          }
+        }
+        
+        if (!valido) {
+          invalidos.add(acorde);
+        }
+      }
+    }
+    return Array.from(invalidos);
+  }, [formData.letraCifra]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    if (acordesInvalidos.length > 0) {
+      const confirmou = window.confirm(
+        `Atenção: Os seguintes acordes possuem grafia não-padrão ou incorreta:\n${acordesInvalidos.join(", ")}\n\nDeseja salvar a cifra mesmo assim?`
+      );
+      if (!confirmou) {
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       await addDoc(collection(db, "musicas"), formData);
@@ -221,6 +266,20 @@ export default function NovaMusicaPage() {
                     >
                       Fechar
                     </button>
+                  </div>
+                )}
+                {acordesInvalidos.length > 0 && (
+                  <div className="mb-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-red-800 dark:text-red-200 text-xs flex items-start gap-2 animate-fade-in">
+                    <span className="mt-0.5 font-bold">⚠️</span>
+                    <div>
+                      <strong>Aviso:</strong> Acorde(s) com grafia possivelmente incorreta detectado(s):{" "}
+                      <span className="font-mono font-bold bg-red-100 dark:bg-red-900/40 px-1 py-0.5 rounded text-red-700 dark:text-red-300">
+                        {acordesInvalidos.join(", ")}
+                      </span>.
+                      <p className="mt-1 text-gray-500 dark:text-gray-400">
+                        Certifique-se de usar a notação padrão (A-G), ex: [C#m] em vez de [C# menor], ou [Bm] em vez de [Bmenor].
+                      </p>
+                    </div>
                   </div>
                 )}
                 <textarea
