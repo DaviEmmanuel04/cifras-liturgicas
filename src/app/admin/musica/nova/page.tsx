@@ -5,8 +5,9 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Upload } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
+import { convertPdfAction } from "@/app/actions";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Outros"];
@@ -14,7 +15,11 @@ const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Outro
 export default function NovaMusicaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [mostrarAvisoPdf, setMostrarAvisoPdf] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     titulo: "",
     categoria: "",
@@ -25,6 +30,37 @@ export default function NovaMusicaPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    const data = new FormData();
+    data.append("file", file);
+
+    try {
+      const result = await convertPdfAction(data);
+      if (result.success && result.text) {
+        setFormData(prev => ({
+          ...prev,
+          letraCifra: result.text || "",
+          titulo: prev.titulo === "" ? file.name.replace(/\.pdf$/i, "") : prev.titulo
+        }));
+        setMostrarAvisoPdf(true);
+      } else {
+        alert("Erro na conversão: " + (result.error || "Formato desconhecido"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao converter o arquivo PDF.");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const inserirColchetes = () => {
@@ -147,14 +183,46 @@ export default function NovaMusicaPage() {
                       Use colchetes para os acordes. Ex: <code>[C]Senhor</code>
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={inserirColchetes}
-                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1"
-                  >
-                    Inserir <span className="font-mono font-bold">[ ]</span>
-                  </button>
+                  <div className="flex gap-2">
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handlePdfUpload} 
+                      accept=".pdf" 
+                      className="hidden" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={importing}
+                      className="bg-primary-50 dark:bg-primary-950/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200 dark:border-primary-800"
+                    >
+                      <Upload size={14} />
+                      <span>{importing ? "Convertendo..." : "Importar PDF"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={inserirColchetes}
+                      className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                    >
+                      Inserir <span className="font-mono font-bold">[ ]</span>
+                    </button>
+                  </div>
                 </div>
+                {mostrarAvisoPdf && (
+                  <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg text-yellow-800 dark:text-yellow-200 text-xs flex justify-between items-center animate-pulse-once">
+                    <span>
+                      <strong>Atenção:</strong> A conversão automática de PDF não é 100% perfeita. Por favor, revise o alinhamento dos acordes e a letra antes de salvar.
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => setMostrarAvisoPdf(false)}
+                      className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200 font-bold ml-2"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                )}
                 <textarea
                   ref={textareaRef}
                   name="letraCifra"

@@ -13,7 +13,7 @@ function isChordLine(line) {
   
   // Algumas linhas podem ter marcadores como "Intro:", "Refrão", etc.
   // Vamos remover palavras comuns de estrutura antes de testar
-  let cleanLine = trimmed.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda)[\:\-]?/gi, '').trim();
+  let cleanLine = trimmed.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)[\:\-]?/gi, '').trim();
   if (cleanLine.length === 0) return false; // Era apenas "Intro:"
 
   const parts = cleanLine.split(/\s+/);
@@ -41,19 +41,46 @@ async function convertPdfToCifra(pdfPath) {
     const resultLines = [];
     
     let pendingChords = [];
+    const sectionRegex = /^\s*\[?(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)\]?[\:\-]?\s*$/i;
+    const prefixRegex = /^\s*\[?(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)\]?[\:\-]?\s*/i;
 
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].replace(/\r/g, ''); // Limpar quebras
 
+      // 1. Checar se é uma linha de seção isolada (ex: [Refrão], Intro:)
+      const sectionMatch = line.match(sectionRegex);
+      if (sectionMatch) {
+        // Se houver acordes pendentes, descarrega primeiro
+        if (pendingChords.length > 0) {
+          let blankLine = "";
+          for (const { chord, index } of pendingChords) {
+            if (index > blankLine.length) {
+              blankLine = blankLine.padEnd(index, ' ');
+            }
+            blankLine += `[${chord}]`;
+          }
+          resultLines.push(blankLine.trim());
+          pendingChords = [];
+        }
+        const sectionName = sectionMatch[1].charAt(0).toUpperCase() + sectionMatch[1].slice(1).toLowerCase();
+        resultLines.push(`${sectionName}:`);
+        continue;
+      }
+
       if (isChordLine(line)) {
         // Encontramos uma linha de acordes
+        // Se a linha começar com um identificador de seção (ex: Intro: [C] [G]), extraímos e criamos a linha da seção antes
+        const prefixMatch = line.match(prefixRegex);
+        if (prefixMatch) {
+          const sectionName = prefixMatch[1].charAt(0).toUpperCase() + prefixMatch[1].slice(1).toLowerCase();
+          resultLines.push(`${sectionName}:`);
+        }
+
         let match;
         // Limpar possíveis estruturas para não dar match falso
-        const lineWithoutStructure = line.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda)[\:\-]?/gi, match => ' '.repeat(match.length));
+        const lineWithoutStructure = line.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)[\:\-]?/gi, match => ' '.repeat(match.length));
         
         while ((match = searchChordRegex.exec(lineWithoutStructure)) !== null) {
-          // Só adicionamos se for um match válido isolado (para evitar pegar "D" no meio de uma palavra, embora a regex do isChordLine evite isso)
-          // Vamos checar se o match está cercado por espaços ou bordas
           const before = match.index === 0 ? ' ' : lineWithoutStructure[match.index - 1];
           const after = (match.index + match[0].length === lineWithoutStructure.length) ? ' ' : lineWithoutStructure[match.index + match[0].length];
           
