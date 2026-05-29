@@ -10,7 +10,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         
         // 1. Linhas Vazias
         if (!linhaTrim && !linha.includes('[')) {
-          return <div key={indexLinha} className="h-6"></div>;
+          return <div key={indexLinha} className="h-6 break-inside-avoid"></div>;
         }
 
         const temAcordes = linha.includes('[');
@@ -19,7 +19,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         if (!temAcordes && (linhaTrim.endsWith(':') || (linhaTrim.startsWith('**') && linhaTrim.endsWith('**')))) {
           const textoLimpo = linhaTrim.replace(/\*\*/g, '');
           return (
-            <h3 key={indexLinha} className="font-bold text-primary-600 dark:text-primary-400 mt-6 mb-2 text-xl">
+            <h3 key={indexLinha} className="font-bold text-primary-600 dark:text-primary-400 mt-6 mb-2 text-xl break-inside-avoid">
               {textoLimpo}
             </h3>
           );
@@ -33,7 +33,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         
         if (isInstrumental) {
           return (
-            <div key={indexLinha} className="flex flex-wrap items-center min-h-[2rem] mt-2 mb-2">
+            <div key={indexLinha} className="flex flex-wrap items-center min-h-[2rem] mt-2 mb-2 break-inside-avoid">
               {partes.map((parte, idx) => {
                 if (parte.startsWith('[') && parte.endsWith(']')) {
                   const acordeCru = parte.slice(1, -1);
@@ -72,7 +72,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         }
 
         return (
-          <div key={indexLinha} className="flex flex-wrap items-start">
+          <div key={indexLinha} className="flex flex-wrap items-start break-inside-avoid">
             {segmentos.map((seg, idx) => (
               <div key={idx} className="flex flex-col items-start">
                 {temAcordes && (

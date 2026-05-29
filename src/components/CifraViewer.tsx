@@ -25,6 +25,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
   const [isScrolling, setIsScrolling] = useState(false);
   const [showDiagrams, setShowDiagrams] = useState(true);
   const [printDiagrams, setPrintDiagrams] = useState(false);
+  const [printTwoColumns, setPrintTwoColumns] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -100,10 +101,10 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           </div>
         </div>
 
-        {/* Painel de Diagramas de Acordes */}
-        {uniqueChordsTransposed.length > 0 && (
-          <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 p-6 transition-colors">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        {/* Painel de Controle de Visualização e Impressão (Sempre visível na tela) */}
+        <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 p-6 transition-colors flex flex-wrap items-center justify-between gap-4">
+          <div>
+            {uniqueChordsTransposed.length > 0 && (
               <button
                 onClick={() => setShowDiagrams(!showDiagrams)}
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5"
@@ -111,7 +112,11 @@ export function CifraViewer({ musica }: { musica: Musica }) {
                 {showDiagrams ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 <span>{showDiagrams ? "Ocultar" : "Mostrar"} Diagramas de Acordes ({uniqueChordsTransposed.length})</span>
               </button>
-              
+            )}
+          </div>
+          
+          <div className="flex flex-wrap gap-4">
+            {uniqueChordsTransposed.length > 0 && (
               <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -121,19 +126,34 @@ export function CifraViewer({ musica }: { musica: Musica }) {
                 />
                 <span>Incluir diagramas no final da impressão</span>
               </label>
-            </div>
-            
-            {showDiagrams && (
-              <div className="flex flex-wrap gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-inner overflow-x-auto">
-                {uniqueChordsTransposed.map((acorde) => (
-                  <ChordDiagram key={acorde} nome={acorde} />
-                ))}
-              </div>
             )}
+            
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={printTwoColumns}
+                onChange={(e) => setPrintTwoColumns(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+              />
+              <span>Imprimir em duas colunas</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Bloco de Diagramas Expandido */}
+        {showDiagrams && uniqueChordsTransposed.length > 0 && (
+          <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-inner overflow-x-auto">
+            <div className="flex flex-wrap gap-4 p-4 bg-gray-50/50 dark:bg-gray-900/10 rounded-xl border border-gray-200 dark:border-gray-700">
+              {uniqueChordsTransposed.map((acorde) => (
+                <ChordDiagram key={acorde} nome={acorde} />
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors">
+        <div className={`bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors ${
+          printTwoColumns ? "print:columns-2 print:gap-8" : ""
+        }`}>
           <CifraRenderer texto={musica.letraCifra} semitons={semitons} />
 
           {/* Rodapé com autoria e modificação (oculto na impressão) */}
