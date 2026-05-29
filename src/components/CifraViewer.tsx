@@ -75,8 +75,18 @@ export function CifraViewer({ musica }: { musica: Musica }) {
     <div className="pb-32">
       <div id="cifra-content" className="relative">
         {/* Marca d'água apenas para impressão */}
-        <div className="hidden print:flex fixed inset-0 items-center justify-center pointer-events-none opacity-[0.04] z-0 overflow-hidden">
-          <Image src="/logo.png" alt="logo" className="grayscale" width={600} height={600} />
+        <div 
+          className="hidden print:flex fixed inset-0 items-center justify-center pointer-events-none opacity-[0.04] z-0 overflow-hidden"
+          style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as any}
+        >
+          <Image 
+            src="/logo.png" 
+            alt="logo" 
+            className="grayscale" 
+            width={600} 
+            height={600} 
+            priority 
+          />
         </div>
         
         <div className="relative z-10 bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
