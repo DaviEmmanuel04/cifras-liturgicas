@@ -26,6 +26,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
   const [showDiagrams, setShowDiagrams] = useState(true);
   const [printDiagrams, setPrintDiagrams] = useState(false);
   const [printTwoColumns, setPrintTwoColumns] = useState(true);
+  const [somenteLetra, setSomenteLetra] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
         {/* Painel de Controle de Visualização e Impressão (Sempre visível na tela) */}
         <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 p-6 transition-colors flex flex-wrap items-center justify-between gap-4">
           <div>
-            {uniqueChordsTransposed.length > 0 && (
+            {!somenteLetra && uniqueChordsTransposed.length > 0 && (
               <button
                 onClick={() => setShowDiagrams(!showDiagrams)}
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5"
@@ -116,7 +117,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           </div>
           
           <div className="flex flex-wrap gap-4">
-            {uniqueChordsTransposed.length > 0 && (
+            {!somenteLetra && uniqueChordsTransposed.length > 0 && (
               <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -137,11 +138,21 @@ export function CifraViewer({ musica }: { musica: Musica }) {
               />
               <span>Imprimir em duas colunas</span>
             </label>
+
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={somenteLetra}
+                onChange={(e) => setSomenteLetra(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+              />
+              <span>Imprimir apenas a letra</span>
+            </label>
           </div>
         </div>
 
         {/* Bloco de Diagramas Expandido */}
-        {showDiagrams && uniqueChordsTransposed.length > 0 && (
+        {showDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
           <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-inner overflow-x-auto">
             <div className="flex flex-wrap gap-4 p-4 bg-gray-50/50 dark:bg-gray-900/10 rounded-xl border border-gray-200 dark:border-gray-700">
               {uniqueChordsTransposed.map((acorde) => (
@@ -154,7 +165,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
         <div className={`bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors ${
           printTwoColumns ? "print:columns-2 print:gap-8" : ""
         }`}>
-          <CifraRenderer texto={musica.letraCifra} semitons={semitons} />
+          <CifraRenderer texto={musica.letraCifra} semitons={semitons} somenteLetra={somenteLetra} />
 
           {/* Rodapé com autoria e modificação (oculto na impressão) */}
           {(musica.criadoPor || musica.modificadoPor) && (
@@ -189,7 +200,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           )}
 
           {/* Diagramas no final para impressão */}
-          {printDiagrams && uniqueChordsTransposed.length > 0 && (
+          {printDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
             <div className="hidden print:block mt-12 border-t border-gray-300 dark:border-gray-700 pt-6">
               <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider text-center">
                 Diagramas dos Acordes

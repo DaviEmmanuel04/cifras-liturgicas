@@ -1,6 +1,14 @@
 import { transporAcorde } from "@/utils/transposicao";
 
-export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons?: number }) {
+export function CifraRenderer({ 
+  texto, 
+  semitons = 0,
+  somenteLetra = false 
+}: { 
+  texto: string; 
+  semitons?: number;
+  somenteLetra?: boolean;
+}) {
   const linhas = texto.split('\n');
 
   return (
@@ -29,9 +37,10 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         const textWithoutChords = linha.replace(/\[.*?\]/g, '').trim();
         const isInstrumental = temAcordes && (textWithoutChords.length === 0 || /^[-|/\s]+$/.test(textWithoutChords));
 
-        const partes = linha.split(/(\[.*?\])/g);
-        
         if (isInstrumental) {
+          if (somenteLetra) return null;
+
+          const partes = linha.split(/(\[.*?\])/g);
           return (
             <div key={indexLinha} className="flex flex-wrap items-center min-h-[2rem] mt-2 mb-2 break-inside-avoid">
               {partes.map((parte, idx) => {
@@ -57,6 +66,16 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
         }
 
         // 4. Modo Padrão (Acorde sobre a Letra)
+        if (somenteLetra) {
+          const linhaSemAcordes = linha.replace(/\[.*?\]/g, '');
+          return (
+            <div key={indexLinha} className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 print:text-black text-lg break-inside-avoid min-h-[1.5rem]">
+              {linhaSemAcordes}
+            </div>
+          );
+        }
+
+        const partes = linha.split(/(\[.*?\])/g);
         const segmentos: { acorde: string | null; texto: string }[] = [];
         let acordeAtual: string | null = null;
 
@@ -80,7 +99,7 @@ export function CifraRenderer({ texto, semitons = 0 }: { texto: string; semitons
                     {seg.acorde || '\u00A0'}
                   </span>
                 )}
-                <span className="whitespace-pre text-gray-800 dark:text-gray-200 text-lg">
+                <span className="whitespace-pre text-gray-800 dark:text-gray-200 print:text-black text-lg">
                   {seg.texto || (seg.acorde ? '\u00A0' : '')}
                 </span>
               </div>
