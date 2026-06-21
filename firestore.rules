@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permite que qualquer pessoa leia as músicas, mas apenas usuários autenticados gravem
+    match /musicas/{musicaId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Permite que qualquer pessoa leia os repertórios, mas apenas usuários autenticados gravem
+    match /repertorios/{repertorioId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Permite que qualquer pessoa leia as configurações (como o tema), mas apenas usuários autenticados gravem
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

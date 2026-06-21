@@ -12,7 +12,7 @@ import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { useLiturgicalTheme, LiturgicalThemeMode } from "@/components/LiturgicalThemeProvider";
 
 const colorOptions = [
-  { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] text-black border-transparent" },
+  { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 border-[#d4cdbd] font-bold" },
   { value: "green", label: "Tempo Comum (Verde)", bgClass: "bg-[#3d6443] text-white border-transparent" },
   { value: "violet", label: "Quaresma / Advento (Roxo)", bgClass: "bg-[#722d9f] text-white border-transparent" },
   { value: "red", label: "Mártires / Pentecostes (Vermelho)", bgClass: "bg-[#b02b2b] text-white border-transparent" },
@@ -179,8 +179,9 @@ export default function DashboardPage() {
                   }`}
               >
                 {!isSelected && (
-                  <span className={`w-2.5 h-2.5 rounded-full ${option.value === 'auto'
-                      ? 'bg-gradient-to-tr from-green-600 via-red-500 to-yellow-500'
+                  <span className={`w-2.5 h-2.5 rounded-full ${
+                    option.value === 'auto'
+                      ? 'bg-gray-400 border border-gray-300'
                       : option.value === 'green'
                         ? 'bg-[#3d6443]'
                         : option.value === 'violet'
