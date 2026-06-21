@@ -8,9 +8,10 @@ import Link from "next/link";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { convertPdfAction } from "@/app/actions";
+import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 
-const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Outros"];
-const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Outros"];
+const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
+const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 
 export default function EditarMusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   
   const [formData, setFormData] = useState({
     titulo: "",
+    artista: "",
     categoria: "",
     tempo: "",
     tom: "",
@@ -190,7 +192,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       <div className="mb-6">
         <Link 
           href="/admin/dashboard" 
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft size={20} />
           <span>Voltar ao painel</span>
@@ -199,31 +201,43 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Lado Esquerdo: Formulário */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 h-fit">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Editar Cifra</h1>
+        <div className="bg-white rounded-xl shadow-sm border border-[#e4ded0] p-8 h-fit">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">Editar Cifra</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título da Música</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Título da Música</label>
                 <input
                   type="text"
                   name="titulo"
                   required
                   value={formData.titulo}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Artista / Ministério (Opcional)</label>
+                <input
+                  type="text"
+                  name="artista"
+                  value={formData.artista || ""}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                  placeholder="Ex: Comunidade Shalom, Padre Zezinho, Tradicional..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria / Momento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria / Momento</label>
                 <select
                   name="categoria"
                   required
                   value={formData.categoria}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="" disabled>Selecione uma categoria</option>
                   {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -231,13 +245,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tempo Litúrgico</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tempo Litúrgico</label>
                 <select
                   name="tempo"
                   required
                   value={formData.tempo}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="" disabled>Selecione um tempo</option>
                   {tempos.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -245,22 +259,22 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tom Original</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tom Original</label>
                 <input
                   type="text"
                   name="tom"
                   required
                   value={formData.tom}
                   onChange={handleChange}
-                  className="w-full md:w-1/3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
               <div className="md:col-span-2">
                 <div className="flex justify-between items-end mb-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Letra e Cifras</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <label className="block text-sm font-medium text-gray-700">Letra e Cifras</label>
+                    <p className="text-xs text-gray-500 mt-1">
                       Use colchetes para os acordes. Ex: <code>[C]Senhor</code>
                     </p>
                   </div>
@@ -276,7 +290,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={importing}
-                      className="bg-primary-50 dark:bg-primary-950/30 hover:bg-primary-100 dark:hover:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200 dark:border-primary-800"
+                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200"
                     >
                       <Upload size={14} />
                       <span>{importing ? "Convertendo..." : "Importar PDF"}</span>
@@ -284,35 +298,35 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                     <button
                       type="button"
                       onClick={inserirColchetes}
-                      className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1"
                     >
                       Inserir <span className="font-mono font-bold">[ ]</span>
                     </button>
                   </div>
                 </div>
                 {mostrarAvisoPdf && (
-                  <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg text-yellow-800 dark:text-yellow-200 text-xs flex justify-between items-center animate-pulse-once">
+                  <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-xs flex justify-between items-center animate-pulse-once">
                     <span>
                       <strong>Atenção:</strong> A conversão automática de PDF não é 100% perfeita. Por favor, revise o alinhamento dos acordes e a letra antes de salvar.
                     </span>
                     <button 
                       type="button" 
                       onClick={() => setMostrarAvisoPdf(false)}
-                      className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200 font-bold ml-2"
+                      className="text-yellow-600 hover:text-yellow-800 font-bold ml-2"
                     >
                       Fechar
                     </button>
                   </div>
                 )}
                 {acordesInvalidos.length > 0 && (
-                  <div className="mb-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-red-800 dark:text-red-200 text-xs flex items-start gap-2 animate-fade-in">
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs flex items-start gap-2 animate-fade-in">
                     <span className="mt-0.5 font-bold">⚠️</span>
                     <div>
                       <strong>Aviso:</strong> Acorde(s) com grafia possivelmente incorreta detectado(s):{" "}
-                      <span className="font-mono font-bold bg-red-100 dark:bg-red-900/40 px-1 py-0.5 rounded text-red-700 dark:text-red-300">
+                      <span className="font-mono font-bold bg-red-100 px-1 py-0.5 rounded text-red-700">
                         {acordesInvalidos.join(", ")}
                       </span>.
-                      <p className="mt-1 text-gray-500 dark:text-gray-400">
+                      <p className="mt-1 text-gray-500">
                         Certifique-se de usar a notação padrão (A-G), ex: [C#m] em vez de [C# menor], ou [Bm] em vez de [Bmenor].
                       </p>
                     </div>
@@ -325,7 +339,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                   rows={15}
                   value={formData.letraCifra}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-mono text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                 ></textarea>
               </div>
             </div>
@@ -350,32 +364,38 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Lado Direito: Preview */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 h-fit sticky top-6">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e4ded0] p-8 h-fit sticky top-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">
             Pré-visualização
           </h2>
           {formData.titulo || formData.letraCifra ? (
             <div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+              <h3 className="text-2xl font-bold text-gray-805 mb-0.5">
                 {formData.titulo || "Título da Música"}
               </h3>
+              {formData.artista && (
+                <p className="text-sm text-gray-500 italic mb-4">de {formData.artista}</p>
+              )}
               <div className="flex flex-wrap gap-2 mb-6 text-xs">
                 {formData.categoria && (
-                  <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">{formData.categoria}</span>
+                  <span className="bg-gray-100 px-2 py-1 rounded text-gray-600">{formData.categoria}</span>
                 )}
                 {formData.tempo && (
-                  <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">{formData.tempo}</span>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full text-xs font-semibold uppercase tracking-wider ${obterEstiloTempoLiturgico(formData.tempo).badge}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${obterEstiloTempoLiturgico(formData.tempo).dot}`} />
+                    {formData.tempo}
+                  </span>
                 )}
                 {formData.tom && (
-                  <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded font-mono font-bold">Tom: {formData.tom}</span>
+                  <span className="bg-primary-50 text-primary-700 px-2 py-1 rounded font-mono font-bold">Tom: {formData.tom}</span>
                 )}
               </div>
-              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700 overflow-x-auto">
+              <div className="mt-4 p-4 bg-gray-50 rounded border border-[#e4ded0] overflow-x-auto">
                 <CifraRenderer texto={formData.letraCifra || "Comece a digitar a letra..."} />
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-10">
+            <p className="text-gray-500 text-center py-10">
               O preview aparecerá aqui conforme você preenche o formulário.
             </p>
           )}

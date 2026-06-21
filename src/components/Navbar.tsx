@@ -1,35 +1,33 @@
 "use client";
 
 import Link from 'next/link';
-import { useTheme } from '@/components/ThemeProvider';
-import { Moon, Sun, Music } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 export function Navbar() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
-    <nav className="print:hidden border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors duration-200">
-      <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold text-xl hover:opacity-80 transition-opacity">
-          <Music size={24} />
-          <span>Cifras Litúrgicas</span>
+    <nav className="print:hidden sticky top-0 z-50 backdrop-blur-md bg-[#f4f0e6]/85 border-b border-gray-200/50 shadow-sm transition-all duration-200">
+      <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+        
+        {/* Logo e Título */}
+        <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+          <Image 
+            src="/logo-principal.png" 
+            alt="Cifras Litúrgicas" 
+            width={34} 
+            height={34} 
+            className="object-contain"
+            priority
+          />
+          <div className="flex flex-col">
+            <span className="font-serif font-bold text-lg md:text-xl text-gray-800 tracking-wide select-none leading-none">
+              Cifras Litúrgicas
+            </span>
+            <span className="text-[8px] md:text-[9px] text-primary-700/80 font-sans tracking-wider uppercase font-bold select-none mt-0.5">
+              Paróquia de Santo Antônio • Antônio Martins
+            </span>
+          </div>
         </Link>
         
-        {mounted && (
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-            aria-label="Alternar tema"
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        )}
       </div>
     </nav>
   );

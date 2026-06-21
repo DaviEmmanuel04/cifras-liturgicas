@@ -25,11 +25,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f0e6]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
-  return <div className="min-h-screen bg-gray-50 dark:bg-gray-900">{children}</div>;
+  return <div className="min-h-screen bg-[#f4f0e6]">{children}</div>;
 }

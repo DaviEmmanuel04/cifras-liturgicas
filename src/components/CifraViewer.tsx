@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { transporAcorde } from "@/utils/transposicao";
-import { Minus, Plus, RotateCcw, Play, Pause, Printer, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
 import Image from "next/image";
+import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 
 type Musica = {
   id: string;
   titulo: string;
+  artista?: string;
   categoria: string;
   tempo: string;
   tom: string;
@@ -22,6 +24,17 @@ type Musica = {
 
 export function CifraViewer({ musica }: { musica: Musica }) {
   const [semitons, setSemitons] = useState(0);
+  const [fontSize, setFontSize] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cifras-liturgicas:font-size");
+      return saved ? parseInt(saved, 10) : 16;
+    }
+    return 16;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("cifras-liturgicas:font-size", fontSize.toString());
+  }, [fontSize]);
   const [isScrolling, setIsScrolling] = useState(false);
   const [showDiagrams, setShowDiagrams] = useState(true);
   const [printDiagrams, setPrintDiagrams] = useState(false);
@@ -48,6 +61,45 @@ export function CifraViewer({ musica }: { musica: Musica }) {
 
   const tomAtual = transporAcorde(musica.tom, semitons);
 
+  const opcoesTom = useMemo(() => {
+    if (!musica.tom) return [];
+    const match = musica.tom.match(/^([CDEFGAB][#b]?)(.*)$/);
+    if (!match) return [{ semitons: 0, label: musica.tom }];
+    
+    const root = match[1];
+    
+    const notasSustenido = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const notasBemol = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    
+    let originalRootIndex = notasSustenido.indexOf(root);
+    let usouBemol = false;
+    
+    if (originalRootIndex === -1) {
+      originalRootIndex = notasBemol.indexOf(root);
+      usouBemol = true;
+    }
+    
+    if (originalRootIndex === -1) {
+      return [{ semitons: 0, label: musica.tom }];
+    }
+    
+    const options = [];
+    
+    for (let i = 0; i < 12; i++) {
+      let offset = i - originalRootIndex;
+      if (offset > 5) offset -= 12;
+      if (offset <= -6) offset += 12;
+      
+      const tomTransposto = transporAcorde(musica.tom, offset);
+      options.push({
+        semitons: offset,
+        label: offset === 0 ? `⭐ ${tomTransposto}` : tomTransposto
+      });
+    }
+    
+    return options;
+  }, [musica.tom]);
+
   // Extrair acordes únicos originais
   const uniqueChords = useMemo(() => {
     const regexAcorde = /\[(.*?)\]/g;
@@ -69,9 +121,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
     return Array.from(new Set(transposed));
   }, [uniqueChords, semitons]);
 
-  const handleDownloadPDF = () => {
-    window.print();
-  };
+
 
   return (
     <div className="pb-32">
@@ -90,89 +140,141 @@ export function CifraViewer({ musica }: { musica: Musica }) {
             priority 
           />
         </div>
-        
-        <div className="relative z-10 bg-white dark:bg-gray-800 p-6 rounded-t-lg border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{musica.titulo}</h1>
-          <div className="flex flex-wrap gap-2 mt-4 text-sm">
-            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.categoria}</span>
-            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full">{musica.tempo}</span>
-            <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full font-mono font-bold transition-colors">
+             <div className="relative z-10 bg-white p-6 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800 leading-tight">{musica.titulo}</h1>
+          {musica.artista && (
+            <p className="text-sm md:text-base text-gray-500 italic mt-1.5">de {musica.artista}</p>
+          )}
+          <div className="flex flex-wrap gap-2 mt-4 text-[10px] font-semibold">
+            <span className="bg-gray-100 text-gray-650 px-3 py-1.5 rounded-full">{musica.categoria}</span>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border uppercase tracking-wider ${obterEstiloTempoLiturgico(musica.tempo).badge}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${obterEstiloTempoLiturgico(musica.tempo).dot}`} />
+              {musica.tempo}
+            </span>
+            <span className="bg-primary-50 text-primary-750 px-3 py-1.5 rounded-full font-mono font-bold transition-all">
               Tom: {tomAtual}
             </span>
           </div>
         </div>
-
         {/* Painel de Controle de Visualização e Impressão (Sempre visível na tela) */}
-        <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/10 p-6 transition-colors flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="print:hidden border-b border-gray-150/70 bg-gray-50/40 p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6">
+            {/* Ajuste de Fonte */}
+            <div className="flex items-center gap-1.5 select-none mr-2">
+              <span className="text-[10px] font-bold text-gray-500">Fonte:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setFontSize(size => Math.max(12, size - 1))}
+                  className="w-6 h-6 flex items-center justify-center bg-white border border-gray-250 hover:bg-gray-50 rounded-md text-gray-600 font-bold text-xs shadow-sm transition-colors cursor-pointer active:bg-gray-100"
+                  title="Diminuir fonte"
+                >
+                  A-
+                </button>
+                <span className="text-[11px] font-bold text-gray-600 font-mono px-1 min-w-[32px] text-center">
+                  {fontSize}px
+                </span>
+                <button
+                  onClick={() => setFontSize(size => Math.min(24, size + 1))}
+                  className="w-6 h-6 flex items-center justify-center bg-white border border-gray-250 hover:bg-gray-50 rounded-md text-gray-600 font-bold text-xs shadow-sm transition-colors cursor-pointer active:bg-gray-100"
+                  title="Aumentar fonte"
+                >
+                  A+
+                </button>
+              </div>
+            </div>
+
             {!somenteLetra && uniqueChordsTransposed.length > 0 && (
-              <button
-                onClick={() => setShowDiagrams(!showDiagrams)}
-                className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5"
-              >
-                {showDiagrams ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                <span>{showDiagrams ? "Ocultar" : "Mostrar"} Diagramas de Acordes ({uniqueChordsTransposed.length})</span>
-              </button>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap gap-4">
-            {!somenteLetra && uniqueChordsTransposed.length > 0 && (
-              <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={printDiagrams}
                   onChange={(e) => setPrintDiagrams(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white"
                 />
-                <span>Incluir diagramas no final da impressão</span>
+                <span>Incluir diagramas na impressão</span>
               </label>
             )}
             
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+            <label className="flex items-center gap-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={printTwoColumns}
                 onChange={(e) => setPrintTwoColumns(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white"
               />
               <span>Imprimir em duas colunas</span>
             </label>
 
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+            <label className="flex items-center gap-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={somenteLetra}
                 onChange={(e) => setSomenteLetra(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white dark:bg-gray-700"
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white"
               />
               <span>Imprimir apenas a letra</span>
             </label>
           </div>
+
+          <div>
+            {/* Botão de Imprimir */}
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-250 hover:bg-gray-50 text-gray-700 rounded-lg text-[10px] font-bold shadow-sm transition-colors cursor-pointer active:bg-gray-100"
+              title="Imprimir / Salvar PDF"
+            >
+              <Printer size={13} />
+              <span>Imprimir / PDF</span>
+            </button>
+          </div>
         </div>
 
-        {/* Bloco de Diagramas Expandido */}
-        {showDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
-          <div className="print:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-inner overflow-x-auto">
-            <div className="flex flex-wrap gap-4 p-4 bg-gray-50/50 dark:bg-gray-900/10 rounded-xl border border-gray-200 dark:border-gray-700">
-              {uniqueChordsTransposed.map((acorde) => (
-                <ChordDiagram key={acorde} nome={acorde} />
-              ))}
+        {/* Seção de Diagramas de Acordes */}
+        {!somenteLetra && uniqueChordsTransposed.length > 0 && (
+          <div className="print:hidden border-b border-gray-150/70 bg-white">
+            {/* Header / Barra de Título e Toggle dos Diagramas */}
+            <div className="px-5 py-2.5 bg-gray-50/50 flex items-center justify-between border-b border-gray-100">
+              <button
+                onClick={() => setShowDiagrams(!showDiagrams)}
+                className="text-xs font-bold text-gray-600 hover:text-primary-750 transition-colors flex items-center gap-1"
+              >
+                {showDiagrams ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                <span>{showDiagrams ? "Ocultar" : "Mostrar"} Diagramas de Acordes ({uniqueChordsTransposed.length})</span>
+              </button>
             </div>
+
+            {/* Conteúdo dos Diagramas */}
+            {showDiagrams && (
+              <div className="py-4 px-6 shadow-inner overflow-x-auto bg-[#fbfaf7]/30">
+                <div className="flex gap-4 min-w-max pb-1">
+                  {uniqueChordsTransposed.map((acorde) => (
+                    <div key={acorde} className="bg-[#fbfaf7] border border-gray-200/80 p-3 rounded-xl shadow-sm transition-all duration-200 hover:border-primary-300">
+                      <ChordDiagram nome={acorde} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        <div className={`bg-white dark:bg-gray-800 p-6 rounded-b-lg shadow-sm transition-colors ${
-          printTwoColumns ? "print:columns-2 print:gap-8" : ""
-        }`}>
-          <CifraRenderer texto={musica.letraCifra} semitons={semitons} somenteLetra={somenteLetra} />
+        <div 
+          className="bg-white p-6 md:p-8 rounded-b-2xl shadow-sm print-clean"
+          style={{ fontSize: `${fontSize}px` }}
+        >
+          <CifraRenderer 
+            texto={musica.letraCifra} 
+            semitons={semitons} 
+            somenteLetra={somenteLetra} 
+            printTwoColumns={printTwoColumns}
+          />
 
           {/* Rodapé com autoria e modificação (oculto na impressão) */}
           {(musica.criadoPor || musica.modificadoPor) && (
-            <div className="print:hidden mt-8 pt-4 border-t border-gray-150 dark:border-gray-700/50 text-[10px] text-gray-400 dark:text-gray-500 flex flex-wrap justify-between gap-x-4 gap-y-1">
+            <div className="print:hidden mt-10 pt-4 border-t border-gray-150 text-[10px] text-gray-400 flex flex-wrap justify-between gap-x-4 gap-y-1">
               {musica.criadoPor && (
                 <span>
-                  Enviada por: <strong className="text-gray-500 dark:text-gray-400">{musica.criadoPor}</strong>
+                  Enviada por: <strong className="text-gray-550">{musica.criadoPor}</strong>
                   {musica.criadoEm && (() => {
                     try {
                       const d = new Date(musica.criadoEm);
@@ -185,7 +287,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
               )}
               {musica.modificadoPor && (
                 <span>
-                  Última modificação: <strong className="text-gray-500 dark:text-gray-400">{musica.modificadoPor}</strong>
+                  Última modificação: <strong className="text-gray-550">{musica.modificadoPor}</strong>
                   {musica.modificadoEm && (() => {
                     try {
                       const d = new Date(musica.modificadoEm);
@@ -201,8 +303,8 @@ export function CifraViewer({ musica }: { musica: Musica }) {
 
           {/* Diagramas no final para impressão */}
           {printDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
-            <div className="hidden print:block mt-12 border-t border-gray-300 dark:border-gray-700 pt-6">
-              <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider text-center">
+            <div className="hidden print:block mt-12 border-t border-gray-300 pt-6">
+              <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider text-center">
                 Diagramas dos Acordes
               </h4>
               <div className="flex flex-wrap justify-center gap-6">
@@ -216,63 +318,81 @@ export function CifraViewer({ musica }: { musica: Musica }) {
       </div>
 
       {/* Barra flutuante de controles */}
-      <div className="print:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-6 py-3 rounded-full shadow-lg flex items-center gap-4 md:gap-6 z-50 transition-colors overflow-x-auto max-w-[95vw]">
-        <div className="flex items-center gap-1 md:gap-2">
+      <div className="print:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 backdrop-blur-md bg-gray-900/90 text-white px-6 py-2.5 rounded-full shadow-xl flex items-center gap-4 md:gap-6 z-50 transition-all duration-300 border border-white/10 max-w-[95vw] overflow-x-auto select-none">
+        <div className="flex items-center gap-1 md:gap-1.5">
           <button 
             onClick={() => setSemitons(s => s - 1)}
-            className="p-2 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors"
             title="Abaixar meio tom"
           >
-            <Minus size={20} />
+            <Minus size={16} />
           </button>
-          <button 
-            onClick={() => setSemitons(0)}
-            className="p-2 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full transition-colors"
-            title="Tom Original"
-          >
-            <RotateCcw size={20} />
-          </button>
+
+          {opcoesTom.length > 0 ? (
+            <div className={`flex items-center gap-1 bg-white/10 rounded-full px-1.5 py-0.5 border transition-all duration-200 ${
+              semitons === 0 ? 'border-amber-400/40 bg-amber-500/10' : 'border-white/10'
+            }`}>
+              <select
+                value={semitons}
+                onChange={(e) => setSemitons(Number(e.target.value))}
+                className={`bg-transparent font-mono font-bold text-[10px] md:text-[11px] py-1 pl-1.5 pr-4 border-none outline-none cursor-pointer appearance-none relative select-none w-[58px] transition-colors ${
+                  semitons === 0 ? 'text-amber-400' : 'text-white'
+                }`}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${semitons === 0 ? '%23fbbf24' : 'white'}'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                  backgroundPosition: 'right 2px center',
+                  backgroundSize: '8px',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
+                {opcoesTom.map(opt => (
+                  <option key={opt.semitons} value={opt.semitons} className="bg-gray-950 text-white font-mono text-xs">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              
+              {semitons !== 0 && (
+                <button
+                  onClick={() => setSemitons(0)}
+                  className="mr-1 p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors text-gray-300 hover:text-white"
+                  title="Voltar para o Tom Original"
+                >
+                  <RotateCcw size={12} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <button 
+              onClick={() => setSemitons(0)}
+              className="px-2.5 py-1.5 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors flex items-center justify-center font-mono font-bold text-[10px] tracking-wider"
+              title="Tom Original"
+            >
+              <RotateCcw size={13} className="mr-1" />
+              <span>ORIGINAL</span>
+            </button>
+          )}
+
           <button 
             onClick={() => setSemitons(s => s + 1)}
-            className="p-2 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors"
             title="Subir meio tom"
           >
-            <Plus size={20} />
+            <Plus size={16} />
           </button>
         </div>
-        
-        <div className="w-px h-6 bg-gray-700 dark:bg-gray-300"></div>
         
         <button 
           onClick={() => setIsScrolling(!isScrolling)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-[10px] tracking-wider uppercase transition-all duration-200 ${
             isScrolling 
-              ? 'bg-primary-600 hover:bg-primary-700 text-white dark:bg-primary-500 dark:hover:bg-primary-600' 
-              : 'hover:bg-gray-800 dark:hover:bg-gray-200'
+              ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-md' 
+              : 'hover:bg-white/10 active:bg-white/20'
           }`}
         >
-          {isScrolling ? <Pause size={20} /> : <Play size={20} />}
-          <span className="hidden md:inline">{isScrolling ? 'Pausar' : 'Rolar'}</span>
+          {isScrolling ? <Pause size={14} /> : <Play size={14} />}
+          <span>{isScrolling ? 'Pausar' : 'Rolar'}</span>
         </button>
-
-        <div className="w-px h-6 bg-gray-700 dark:bg-gray-300"></div>
-
-        <div className="flex items-center gap-1 md:gap-2">
-          <button 
-            onClick={() => window.print()}
-            className="p-2 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full transition-colors"
-            title="Imprimir cifra"
-          >
-            <Printer size={20} />
-          </button>
-          <button 
-            onClick={handleDownloadPDF}
-            className="p-2 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-full transition-colors"
-            title="Baixar PDF"
-          >
-            <Download size={20} />
-          </button>
-        </div>
       </div>
     </div>
   );

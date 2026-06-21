@@ -32,22 +32,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+    <div className="min-h-screen flex items-center justify-center bg-[#f4f0e6] p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-[#e4ded0]">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Área Administrativa</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">Acesso restrito para gerenciar cifras</p>
+          <h1 className="text-2xl font-bold text-gray-800">Área Administrativa</h1>
+          <p className="text-gray-500 mt-2">Acesso restrito para gerenciar cifras</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg mb-6 text-sm text-center">
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center border border-red-100">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Usuário
             </label>
             <div className="relative">
@@ -59,14 +59,14 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
+                className="w-full pl-10 pr-3 py-2 border border-[#e4ded0] rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
                 placeholder="Ex: adminDasCifras"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Senha
             </label>
             <div className="relative">
@@ -78,7 +78,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
+                className="w-full pl-10 pr-3 py-2 border border-[#e4ded0] rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
                 placeholder="••••••••"
               />
             </div>

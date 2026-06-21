@@ -3,22 +3,24 @@ import { transporAcorde } from "@/utils/transposicao";
 export function CifraRenderer({ 
   texto, 
   semitons = 0,
-  somenteLetra = false 
+  somenteLetra = false,
+  printTwoColumns = false
 }: { 
   texto: string; 
   semitons?: number;
   somenteLetra?: boolean;
+  printTwoColumns?: boolean;
 }) {
   const linhas = texto.split('\n');
 
   return (
-    <div className="font-sans">
+    <div className={`font-sans ${printTwoColumns ? "print-columns-2" : ""}`}>
       {linhas.map((linha, indexLinha) => {
         const linhaTrim = linha.trim();
         
         // 1. Linhas Vazias
         if (!linhaTrim && !linha.includes('[')) {
-          return <div key={indexLinha} className="h-6 break-inside-avoid"></div>;
+          return <div key={indexLinha} className="h-[1.5em] break-inside-avoid"></div>;
         }
 
         const temAcordes = linha.includes('[');
@@ -27,7 +29,7 @@ export function CifraRenderer({
         if (!temAcordes && (linhaTrim.endsWith(':') || (linhaTrim.startsWith('**') && linhaTrim.endsWith('**')))) {
           const textoLimpo = linhaTrim.replace(/\*\*/g, '');
           return (
-            <h3 key={indexLinha} className="font-bold text-primary-600 dark:text-primary-400 mt-6 mb-2 text-xl break-inside-avoid">
+            <h3 key={indexLinha} className="font-serif font-bold italic text-primary-700 mt-5 mb-1.5 text-[0.95em] break-inside-avoid tracking-wide">
               {textoLimpo}
             </h3>
           );
@@ -42,19 +44,19 @@ export function CifraRenderer({
 
           const partes = linha.split(/(\[.*?\])/g);
           return (
-            <div key={indexLinha} className="flex flex-wrap items-center min-h-[2rem] mt-2 mb-2 break-inside-avoid">
+            <div key={indexLinha} className="flex flex-wrap items-center min-h-[2em] mt-2 mb-2 break-inside-avoid">
               {partes.map((parte, idx) => {
                 if (parte.startsWith('[') && parte.endsWith(']')) {
                   const acordeCru = parte.slice(1, -1);
                   const acorde = transporAcorde(acordeCru, semitons);
                   return (
-                    <span key={idx} className="text-primary-600 dark:text-primary-400 font-bold font-mono text-lg">
+                    <span key={idx} className="text-primary-700 font-extrabold font-mono text-[1.125em] tracking-wider">
                       {acorde}
                     </span>
                   );
                 } else if (parte.length > 0) {
                   return (
-                    <span key={idx} className="whitespace-pre text-gray-500 dark:text-gray-400 font-mono text-lg">
+                    <span key={idx} className="whitespace-pre text-gray-400 font-mono text-[1.125em]">
                       {parte}
                     </span>
                   );
@@ -69,7 +71,7 @@ export function CifraRenderer({
         if (somenteLetra) {
           const linhaSemAcordes = linha.replace(/\[.*?\]/g, '');
           return (
-            <div key={indexLinha} className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 print:text-black text-lg break-inside-avoid min-h-[1.5rem]">
+            <div key={indexLinha} className="whitespace-pre-wrap text-gray-850 print:text-black text-[1em] break-inside-avoid min-h-[1.5em] font-medium leading-relaxed">
               {linhaSemAcordes}
             </div>
           );
@@ -95,11 +97,11 @@ export function CifraRenderer({
             {segmentos.map((seg, idx) => (
               <div key={idx} className="flex flex-col items-start">
                 {temAcordes && (
-                  <span className="text-primary-600 dark:text-primary-400 font-bold min-h-[1.5rem] pr-1 font-mono text-base">
+                  <span className="text-primary-700 font-extrabold min-h-[1.5em] pr-1 font-mono text-[0.875em] leading-none tracking-wide select-none">
                     {seg.acorde || '\u00A0'}
                   </span>
                 )}
-                <span className="whitespace-pre text-gray-800 dark:text-gray-200 print:text-black text-lg">
+                <span className="whitespace-pre text-gray-850 print:text-black text-[1em] font-medium leading-relaxed">
                   {seg.texto || (seg.acorde ? '\u00A0' : '')}
                 </span>
               </div>

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Lora, Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { LiturgicalThemeProvider } from "@/components/LiturgicalThemeProvider";
 import { Navbar } from "@/components/Navbar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -29,17 +33,19 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${lora.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <ThemeProvider>
-          <LiturgicalThemeProvider>
-            <Navbar />
-            <div className="flex-1">
-              {children}
-            </div>
-          </LiturgicalThemeProvider>
-        </ThemeProvider>
+      <body className="min-h-full flex flex-col bg-[#f4f0e6] text-gray-900">
+        <LiturgicalThemeProvider>
+          <Navbar />
+          <div className="flex-1">
+            {children}
+          </div>
+          <footer className="print:hidden border-t border-gray-250/20 py-6 text-center text-xs text-gray-500 font-sans mt-auto">
+            <p className="font-serif italic text-gray-600 mb-1">Paróquia de Santo Antônio</p>
+            <p className="uppercase tracking-widest text-[9px] text-gray-400 font-semibold">Antônio Martins • RN</p>
+          </footer>
+        </LiturgicalThemeProvider>
       </body>
     </html>
   );
