@@ -341,7 +341,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
       </div>
 
       {/* Barra flutuante de controles */}
-      <div className="print:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 backdrop-blur-md bg-gray-900/90 text-white px-6 py-2.5 rounded-full shadow-xl flex items-center gap-4 md:gap-6 z-50 transition-all duration-300 border border-white/10 max-w-[95vw] overflow-x-auto select-none">
+      <div className="print:hidden fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] left-1/2 transform -translate-x-1/2 backdrop-blur-md bg-gray-900/90 text-white px-6 py-2.5 rounded-full shadow-xl flex items-center gap-4 md:gap-6 z-50 transition-all duration-300 border border-white/10 max-w-[95vw] overflow-x-auto select-none">
         <div className="flex items-center gap-1 md:gap-1.5">
           <button 
             onClick={() => setSemitons(s => s - 1)}

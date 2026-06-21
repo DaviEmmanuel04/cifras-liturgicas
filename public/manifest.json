@@ -3,9 +3,9 @@
   "short_name": "Cifras",
   "description": "Cifras de músicas de missa e terço - Paróquia de Santo Antônio",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#f4f0e6",
-  "theme_color": "#1e1d1a",
+  "theme_color": "#f4f0e6",
   "orientation": "portrait-primary",
   "icons": [
     {

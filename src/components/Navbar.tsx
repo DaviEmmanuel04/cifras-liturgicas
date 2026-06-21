@@ -18,7 +18,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <nav className="print:hidden sticky top-0 z-50 backdrop-blur-md bg-[#f4f0e6]/85 border-b border-gray-200/50 shadow-sm transition-all duration-200">
+    <nav className="print:hidden sticky top-0 z-50 backdrop-blur-md bg-[#f4f0e6]/85 border-b border-gray-200/50 shadow-sm transition-all duration-200 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
         
         {/* Logo e Título */}

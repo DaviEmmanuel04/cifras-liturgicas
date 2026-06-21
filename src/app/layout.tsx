@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Lora, Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LiturgicalThemeProvider } from "@/components/LiturgicalThemeProvider";
@@ -34,6 +34,11 @@ export const metadata: Metadata = {
     shortcut: "/logo.png",
     apple: "/logo-principal.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Cifras Litúrgicas",
+  },
   openGraph: {
     title: "Cifras Litúrgicas - Paróquia de Santo Antônio",
     description: "Cifras de músicas de missa e terço da Paróquia de Santo Antônio, Antônio Martins - RN.",
@@ -56,6 +61,15 @@ export const metadata: Metadata = {
     description: "Cifras de músicas de missa e terço da Paróquia de Santo Antônio, Antônio Martins - RN.",
     images: ["/logo-principal.png"],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f4f0e6",
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
