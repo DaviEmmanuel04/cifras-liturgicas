@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import Link from "next/link";
-import { Plus, Edit2, Trash2, LogOut, Search, SlidersHorizontal } from "lucide-react";
+import { Plus, Edit2, Trash2, LogOut, Search, SlidersHorizontal, Eye } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { RepertorioManager } from "@/components/RepertorioManager";
@@ -138,20 +138,27 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-800">Painel de Cifras</h1>
           <p className="text-gray-500">Gerencie o repertório do aplicativo</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg border border-gray-300 shadow-sm transition-colors font-medium text-sm"
+          >
+            <Eye size={18} />
+            <span>Ver Site</span>
+          </Link>
           <Link
             href="/admin/musica/nova"
-            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors font-medium text-sm"
           >
-            <Plus size={20} />
-            <span className="hidden sm:inline">Nova Cifra</span>
+            <Plus size={18} />
+            <span>Nova Cifra</span>
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 px-4 py-2 rounded-lg border border-gray-300/40 shadow-sm transition-colors font-medium text-sm"
           >
-            <LogOut size={20} />
-            <span className="hidden sm:inline">Sair</span>
+            <LogOut size={18} />
+            <span>Sair</span>
           </button>
         </div>
       </div>

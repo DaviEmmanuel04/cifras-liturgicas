@@ -36,28 +36,53 @@ export function CifraViewer({ musica }: { musica: Musica }) {
     localStorage.setItem("cifras-liturgicas:font-size", fontSize.toString());
   }, [fontSize]);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState<number>(30);
   const [showDiagrams, setShowDiagrams] = useState(true);
   const [printDiagrams, setPrintDiagrams] = useState(false);
   const [printTwoColumns, setPrintTwoColumns] = useState(true);
   const [somenteLetra, setSomenteLetra] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const lastTimeRef = useRef<number>(0);
+  const scrollAccumulatorRef = useRef<number>(0);
 
   useEffect(() => {
-    if (isScrolling) {
-      intervalRef.current = setInterval(() => {
-        window.scrollBy(0, 1);
-      }, 30); // 30ms = approx 33px per second, good reading speed
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    let animationFrameId: number;
+    lastTimeRef.current = 0;
+    scrollAccumulatorRef.current = 0;
+
+    const scroll = (timestamp: number) => {
+      if (!lastTimeRef.current) {
+        lastTimeRef.current = timestamp;
       }
+      const elapsed = timestamp - lastTimeRef.current;
+      lastTimeRef.current = timestamp;
+
+      // Calcula os pixels a rolar com base no tempo real decorrido (delta-time)
+      // scrollSpeed é ms/pixel -> pixels/segundo = 1000 / scrollSpeed
+      const pixelsPerSecond = 1000 / scrollSpeed;
+      const pixelsToScroll = (pixelsPerSecond * elapsed) / 1000;
+
+      scrollAccumulatorRef.current += pixelsToScroll;
+
+      if (scrollAccumulatorRef.current >= 1) {
+        const scrollAmount = Math.floor(scrollAccumulatorRef.current);
+        window.scrollBy(0, scrollAmount);
+        scrollAccumulatorRef.current -= scrollAmount;
+      }
+
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    if (isScrolling) {
+      animationFrameId = requestAnimationFrame(scroll);
     }
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isScrolling]);
+  }, [isScrolling, scrollSpeed]);
 
   const tomAtual = transporAcorde(musica.tom, semitons);
 
@@ -120,31 +145,29 @@ export function CifraViewer({ musica }: { musica: Musica }) {
     const transposed = uniqueChords.map(ac => transporAcorde(ac, semitons));
     return Array.from(new Set(transposed));
   }, [uniqueChords, semitons]);
-
-
-
   return (
     <div className="pb-32">
       <div id="cifra-content" className="relative">
-        {/* Marca d'água apenas para impressão */}
-        <div 
-          className="hidden print:flex fixed inset-0 items-center justify-center pointer-events-none opacity-[0.04] z-0 overflow-hidden"
-          style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as any}
-        >
-          <Image 
-            src="/logo.png" 
-            alt="logo" 
-            className="grayscale" 
-            width={600} 
-            height={600} 
-            priority 
-          />
-        </div>
-             <div className="relative z-10 bg-white p-6 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800 leading-tight">{musica.titulo}</h1>
-          {musica.artista && (
-            <p className="text-sm md:text-base text-gray-500 italic mt-1.5">de {musica.artista}</p>
-          )}
+        <div className="relative z-10 bg-white p-6 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800 leading-tight">{musica.titulo}</h1>
+              {musica.artista && (
+                <p className="text-sm md:text-base text-gray-500 italic mt-1.5">de {musica.artista}</p>
+              )}
+            </div>
+            {/* Logo da Paróquia apenas para identificação visual na impressão */}
+            <div className="hidden print:block w-12 h-12 md:w-14 md:h-14 relative shrink-0">
+              <Image 
+                src="/logo-principal.png" 
+                alt="Logo Paróquia" 
+                width={56} 
+                height={56} 
+                className="object-contain filter grayscale"
+                priority
+              />
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2 mt-4 text-[10px] font-semibold">
             <span className="bg-gray-100 text-gray-650 px-3 py-1.5 rounded-full">{musica.categoria}</span>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border uppercase tracking-wider ${obterEstiloTempoLiturgico(musica.tempo).badge}`}>
@@ -382,17 +405,40 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           </button>
         </div>
         
-        <button 
-          onClick={() => setIsScrolling(!isScrolling)}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-[10px] tracking-wider uppercase transition-all duration-200 ${
-            isScrolling 
-              ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-md' 
-              : 'hover:bg-white/10 active:bg-white/20'
-          }`}
-        >
-          {isScrolling ? <Pause size={14} /> : <Play size={14} />}
-          <span>{isScrolling ? 'Pausar' : 'Rolar'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsScrolling(!isScrolling)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-[10px] tracking-wider uppercase transition-all duration-200 ${
+              isScrolling 
+                ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-md' 
+                : 'hover:bg-white/10 active:bg-white/20'
+            }`}
+          >
+            {isScrolling ? <Pause size={13} /> : <Play size={13} />}
+            <span>{isScrolling ? 'Pausar' : 'Rolar'}</span>
+          </button>
+
+          <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
+            <select
+              value={scrollSpeed}
+              onChange={(e) => setScrollSpeed(Number(e.target.value))}
+              className="bg-transparent text-white font-sans font-bold text-[10px] py-1 pl-1 pr-4.5 border-none outline-none cursor-pointer appearance-none relative select-none text-center"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundPosition: 'right 0px center',
+                backgroundSize: '8px',
+                backgroundRepeat: 'no-repeat'
+              }}
+              title="Velocidade da rolagem"
+            >
+              <option value={75} className="bg-gray-950 text-white text-xs">0.5x</option>
+              <option value={50} className="bg-gray-950 text-white text-xs">0.75x</option>
+              <option value={30} className="bg-gray-950 text-white text-xs">1.0x</option>
+              <option value={20} className="bg-gray-950 text-white text-xs">1.5x</option>
+              <option value={12} className="bg-gray-950 text-white text-xs">2.0x</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   );

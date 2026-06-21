@@ -9,21 +9,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user && pathname !== "/admin/login") {
-        router.push("/admin/login");
-      } else if (user && pathname === "/admin/login") {
-        router.push("/admin/dashboard");
+      if (!user) {
+        if (pathname !== "/admin/login") {
+          // Redireciona e mantém desautorizado/carregando para esconder as telas protegidas
+          router.push("/admin/login");
+          setAuthorized(false);
+        } else {
+          // Permite visualizar a tela de login
+          setAuthorized(true);
+          setLoading(false);
+        }
+      } else {
+        if (pathname === "/admin/login") {
+          // Redireciona logados para o dashboard e esconde a tela de login
+          router.push("/admin/dashboard");
+          setAuthorized(false);
+        } else {
+          // Permite ver o dashboard e outras telas protegidas
+          setAuthorized(true);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router, pathname]);
 
-  if (loading) {
+  if (loading || !authorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f4f0e6]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
