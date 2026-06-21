@@ -7,6 +7,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getLiturgicalDay } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
+import { CifraViewer } from "./CifraViewer";
 
 type Musica = {
   id: string;
@@ -60,6 +61,86 @@ export function MusicaList() {
   const [activeRepertorios, setActiveRepertorios] = useState<Repertorio[]>([]);
   const [selectedRepTabId, setSelectedRepTabId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);
+  const [selectedMusicaId, setSelectedMusicaId] = useState<string | null>(null);
+
+  // Sincroniza a URL inicial, histórico de navegação e filtros salvos na URL
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname;
+      const match = path.match(/^\/musica\/([a-zA-Z0-9_-]+)$/);
+      if (match) {
+        setSelectedMusicaId(match[1]);
+      } else if (path === "/") {
+        setSelectedMusicaId(null);
+      }
+
+      // Restaura filtros da URL
+      const params = new URLSearchParams(window.location.search);
+      setBusca(params.get("q") || "");
+      setCategoria(params.get("cat") || "");
+      setTempo(params.get("tempo") || "");
+    };
+
+    handleLocationChange();
+
+    window.addEventListener("popstate", handleLocationChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
+  }, []);
+
+  // Atualiza parâmetros de busca na URL dinamicamente
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentQ = params.get("q") || "";
+    const currentCat = params.get("cat") || "";
+    const currentTempo = params.get("tempo") || "";
+
+    if (busca !== currentQ || categoria !== currentCat || tempo !== currentTempo) {
+      const newParams = new URLSearchParams(window.location.search);
+      
+      if (busca) newParams.set("q", busca);
+      else newParams.delete("q");
+
+      if (categoria) newParams.set("cat", categoria);
+      else newParams.delete("cat");
+
+      if (tempo) newParams.set("tempo", tempo);
+      else newParams.delete("tempo");
+
+      const searchStr = newParams.toString();
+      const newQuery = searchStr ? `?${searchStr}` : "";
+      const path = window.location.pathname;
+
+      window.history.replaceState(null, "", `${path}${newQuery}`);
+    }
+  }, [busca, categoria, tempo]);
+
+  // Reseta o scroll ao abrir uma música ou voltar à lista
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selectedMusicaId]);
+
+  const selectedMusica = useMemo(() => {
+    return musicas.find(m => m.id === selectedMusicaId) || null;
+  }, [musicas, selectedMusicaId]);
+
+  const handleMusicaClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setSelectedMusicaId(id);
+    
+    // Preserva parâmetros de busca ao navegar
+    const search = window.location.search;
+    window.history.pushState(null, "", `/musica/${id}${search}`);
+  };
+
+  const handleBackToList = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setSelectedMusicaId(null);
+    
+    // Preserva parâmetros de busca ao retornar para a lista
+    const search = window.location.search;
+    window.history.pushState(null, "", `/${search}`);
+  };
 
   useEffect(() => {
     setVisibleCount(12);
@@ -148,6 +229,48 @@ export function MusicaList() {
 
   // Ignoramos o "tempo" como filtro que esconde o repertório, pois ele é setado automaticamente pela API
   const hasFilters = busca || categoria;
+
+  if (selectedMusicaId) {
+    if (loading) {
+      return (
+        <div className="min-h-[50vh] flex items-center justify-center bg-[#f4f0e6]">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+            <p className="mt-2 text-gray-600 font-medium">Carregando cifra...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!selectedMusica) {
+      return (
+        <div className="min-h-[50vh] flex flex-col items-center justify-center bg-[#f4f0e6]">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Cifra não encontrada</h1>
+          <button 
+            onClick={handleBackToList}
+            className="text-primary-700 hover:text-primary-850 font-semibold hover:underline cursor-pointer"
+          >
+            &larr; Voltar para a lista
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <main className="p-6">
+        <div className="max-w-3xl mx-auto">
+          <button 
+            onClick={handleBackToList}
+            className="print:hidden inline-block mb-6 text-primary-700 hover:text-primary-950 font-semibold transition-colors cursor-pointer bg-transparent border-none outline-none"
+          >
+            &larr; Voltar para a lista
+          </button>
+
+          <CifraViewer musica={selectedMusica} />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -253,6 +376,7 @@ export function MusicaList() {
               {musicasDoDia.map((musica, index) => (
                 <Link 
                   href={`/musica/${musica.id}`} 
+                  onClick={(e) => handleMusicaClick(e, musica.id)}
                   key={`rep-${musica.id}-${index}`}
                   className="block bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group relative"
                 >
@@ -315,6 +439,7 @@ export function MusicaList() {
           musicasExibidas.map((musica) => (
             <Link 
               href={`/musica/${musica.id}`} 
+              onClick={(e) => handleMusicaClick(e, musica.id)}
               key={musica.id}
               className="block bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group"
             >

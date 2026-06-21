@@ -109,9 +109,34 @@ const colorPalettes: Record<LiturgicalColor, Record<string, string>> = {
 };
 
 export function LiturgicalThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<LiturgicalThemeMode>('auto');
-  const [apiColor, setApiColor] = useState<LiturgicalColor>('green');
-  const [activeColor, setActiveColor] = useState<LiturgicalColor>('blue');
+  const [mode, setModeState] = useState<LiturgicalThemeMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("liturgical-theme-mode") as LiturgicalThemeMode | null;
+      return saved || 'auto';
+    }
+    return 'auto';
+  });
+
+  const [apiColor, setApiColor] = useState<LiturgicalColor>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("liturgical-theme-api-color") as LiturgicalColor | null;
+      return saved || 'green';
+    }
+    return 'green';
+  });
+
+  const [activeColor, setActiveColor] = useState<LiturgicalColor>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("liturgical-theme-active-color") as LiturgicalColor | null;
+      return saved || 'green';
+    }
+    return 'green';
+  });
+
+  // Executa uma paleta inicial o mais rápido possível no cliente
+  useEffect(() => {
+    applyPalette(activeColor);
+  }, []);
 
   // Escuta a configuração do tema global no Firestore
   useEffect(() => {
@@ -119,10 +144,13 @@ export function LiturgicalThemeProvider({ children }: { children: React.ReactNod
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data && data.mode) {
-          setModeState(data.mode as LiturgicalThemeMode);
+          const newMode = data.mode as LiturgicalThemeMode;
+          setModeState(newMode);
+          localStorage.setItem("liturgical-theme-mode", newMode);
         }
       } else {
         setModeState('auto');
+        localStorage.setItem("liturgical-theme-mode", 'auto');
       }
     }, (err) => {
       console.error("Erro ao escutar tema global do Firestore:", err);
@@ -145,12 +173,15 @@ export function LiturgicalThemeProvider({ children }: { children: React.ReactNod
         if (color === 'white') color = 'white'; // Sincroniza nomenclatura
         
         if (colorPalettes[color as LiturgicalColor]) {
-          setApiColor(color as LiturgicalColor);
+          const finalApiColor = color as LiturgicalColor;
+          setApiColor(finalApiColor);
+          localStorage.setItem("liturgical-theme-api-color", finalApiColor);
         } else {
           setApiColor('green');
+          localStorage.setItem("liturgical-theme-api-color", 'green');
         }
       } catch (e) {
-        console.error("Erro ao buscar cor litúrgica, fallback para verde.", e);
+        console.error("Erro ao buscar tempo litúrgico, fallback para verde.", e);
         setApiColor('green');
       }
     }
@@ -161,6 +192,7 @@ export function LiturgicalThemeProvider({ children }: { children: React.ReactNod
   useEffect(() => {
     const finalColor = mode === 'auto' ? apiColor : mode;
     setActiveColor(finalColor);
+    localStorage.setItem("liturgical-theme-active-color", finalColor);
     applyPalette(finalColor);
   }, [mode, apiColor]);
 

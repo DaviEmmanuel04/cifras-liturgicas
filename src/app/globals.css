@@ -7,16 +7,16 @@
   --font-serif: var(--font-lora);
   --font-mono: var(--font-geist-mono);
   
-  --color-primary-50: var(--primary-50, #eff6ff);
-  --color-primary-100: var(--primary-100, #dbeafe);
-  --color-primary-200: var(--primary-200, #bfdbfe);
-  --color-primary-300: var(--primary-300, #93c5fd);
-  --color-primary-400: var(--primary-400, #60a5fa);
-  --color-primary-500: var(--primary-500, #3b82f6);
-  --color-primary-600: var(--primary-600, #2563eb);
-  --color-primary-700: var(--primary-700, #1d4ed8);
-  --color-primary-800: var(--primary-800, #1e40af);
-  --color-primary-900: var(--primary-900, #1e3a8a);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
 }
 
 @media print {
@@ -52,6 +52,18 @@
 :root {
   --background: #f4f0e6;
   --foreground: #1e1d1a;
+
+  /* Default Ordinary Time Green (prebents neon blue flash) */
+  --primary-50: #f2f6f1;
+  --primary-100: #e1ebe0;
+  --primary-200: #c4d6c2;
+  --primary-300: #9ebaa0;
+  --primary-400: #739b78;
+  --primary-500: #527e59;
+  --primary-600: #3d6443;
+  --primary-700: #325037;
+  --primary-800: #263e2a;
+  --primary-900: #1e3021;
 }
 
 body {
