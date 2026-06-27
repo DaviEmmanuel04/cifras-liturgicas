@@ -94,6 +94,9 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=seu_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=seu_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=seu_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=seu_app_id
+
+# Integração opcional com Inteligência Artificial para importação/conversão de cifras
+DEEPSEEK_API_KEY=sua_chave_de_api_deepseek
 ```
 
 ### 4. Rodar Servidor de Desenvolvimento

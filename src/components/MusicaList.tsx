@@ -257,7 +257,7 @@ export function MusicaList() {
     }
 
     return (
-      <main className="p-6">
+      <main className="p-3 md:p-6">
         <div className="max-w-3xl mx-auto">
           <button 
             onClick={handleBackToList}

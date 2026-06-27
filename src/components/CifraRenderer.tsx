@@ -101,7 +101,7 @@ export function CifraRenderer({
                     {seg.acorde || '\u00A0'}
                   </span>
                 )}
-                <span className="whitespace-pre text-gray-850 print:text-black text-[1em] font-medium leading-relaxed">
+                <span className="whitespace-pre-wrap text-gray-850 print:text-black text-[1em] font-medium leading-relaxed">
                   {seg.texto || (seg.acorde ? '\u00A0' : '')}
                 </span>
               </div>

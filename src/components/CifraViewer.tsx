@@ -146,9 +146,9 @@ export function CifraViewer({ musica }: { musica: Musica }) {
     return Array.from(new Set(transposed));
   }, [uniqueChords, semitons]);
   return (
-    <div className="pb-32">
+    <div className="pb-20 md:pb-32">
       <div id="cifra-content" className="relative">
-        <div className="relative z-10 bg-white p-6 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
+        <div className="relative z-10 bg-white p-4 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800 leading-tight">{musica.titulo}</h1>
@@ -282,7 +282,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
         )}
 
         <div 
-          className="bg-white p-6 md:p-8 rounded-b-2xl shadow-sm print-clean"
+          className="bg-white p-4 md:p-8 rounded-b-2xl shadow-sm print-clean"
           style={{ fontSize: `${fontSize}px` }}
         >
           <CifraRenderer 
@@ -291,38 +291,6 @@ export function CifraViewer({ musica }: { musica: Musica }) {
             somenteLetra={somenteLetra} 
             printTwoColumns={printTwoColumns}
           />
-
-          {/* Rodapé com autoria e modificação (oculto na impressão) */}
-          {(musica.criadoPor || musica.modificadoPor) && (
-            <div className="print:hidden mt-10 pt-4 border-t border-gray-150 text-[10px] text-gray-400 flex flex-wrap justify-between gap-x-4 gap-y-1">
-              {musica.criadoPor && (
-                <span>
-                  Enviada por: <strong className="text-gray-550">{musica.criadoPor}</strong>
-                  {musica.criadoEm && (() => {
-                    try {
-                      const d = new Date(musica.criadoEm);
-                      return isNaN(d.getTime()) ? "" : ` em ${d.toLocaleDateString("pt-BR")}`;
-                    } catch {
-                      return "";
-                    }
-                  })()}
-                </span>
-              )}
-              {musica.modificadoPor && (
-                <span>
-                  Última modificação: <strong className="text-gray-550">{musica.modificadoPor}</strong>
-                  {musica.modificadoEm && (() => {
-                    try {
-                      const d = new Date(musica.modificadoEm);
-                      return isNaN(d.getTime()) ? "" : ` em ${d.toLocaleDateString("pt-BR")}`;
-                    } catch {
-                      return "";
-                    }
-                  })()}
-                </span>
-              )}
-            </div>
-          )}
 
           {/* Diagramas no final para impressão */}
           {printDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (

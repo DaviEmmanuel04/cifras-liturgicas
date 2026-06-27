@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, use } from "react";
+import { createPortal } from "react-dom";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save, Upload, Sparkles, X } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
-import { convertPdfAction } from "@/app/actions";
+import { convertPdfAction, convertTextWithAiAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -20,7 +21,16 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [mostrarAvisoPdf, setMostrarAvisoPdf] = useState(false);
+  const [mostrarModalAi, setMostrarModalAi] = useState(false);
+  const [textoBrutoAi, setTextoBrutoAi] = useState("");
+  const [convertendoAi, setConvertendoAi] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -86,6 +96,30 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleAiConversion = async () => {
+    if (!textoBrutoAi.trim()) return;
+    setConvertendoAi(true);
+    try {
+      const result = await convertTextWithAiAction(textoBrutoAi);
+      if (result.success && result.text) {
+        setFormData(prev => ({
+          ...prev,
+          letraCifra: result.text || ""
+        }));
+        setMostrarModalAi(false);
+        setTextoBrutoAi("");
+        setMostrarAvisoPdf(true);
+      } else {
+        alert("Erro na conversão com IA: " + (result.error || "Erro desconhecido"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro de comunicação ao converter com IA.");
+    } finally {
+      setConvertendoAi(false);
     }
   };
 
@@ -278,7 +312,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                       Use colchetes para os acordes. Ex: <code>[C]Senhor</code>
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap justify-end">
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -289,16 +323,25 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={importing}
-                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200"
+                      disabled={importing || convertendoAi}
+                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200 cursor-pointer"
                     >
                       <Upload size={14} />
-                      <span>{importing ? "Convertendo..." : "Importar PDF"}</span>
+                      <span>{importing ? "Lendo PDF..." : "Importar PDF"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarModalAi(true)}
+                      disabled={importing || convertendoAi}
+                      className="bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 border border-primary-200 cursor-pointer"
+                    >
+                      <Sparkles size={14} />
+                      <span>Converter com IA</span>
                     </button>
                     <button
                       type="button"
                       onClick={inserirColchetes}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       Inserir <span className="font-mono font-bold">[ ]</span>
                     </button>
@@ -401,6 +444,71 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           )}
         </div>
       </div>
+      {/* Modal de Conversão com IA */}
+      {mostrarModalAi && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-150 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary-600 animate-pulse" />
+                <h3 className="font-serif font-bold text-lg text-gray-800">Converter Cifra com IA</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setMostrarModalAi(false)}
+                className="text-gray-400 hover:text-gray-655 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Cole a cifra bruta abaixo (com acordes escritos acima das palavras ou em linhas separadas). A inteligência artificial do <strong>DeepSeek</strong> irá alinhar e embutir os acordes em colchetes <code>[ ]</code> automaticamente no texto, além de formatar os títulos de seções.
+              </p>
+              
+              <textarea
+                value={textoBrutoAi}
+                onChange={(e) => setTextoBrutoAi(e.target.value)}
+                placeholder="Cole a cifra aqui...&#10;Exemplo:&#10;   Dm               G&#10;O amor do Senhor Deus por quem o teme..."
+                className="w-full h-80 p-3 border border-gray-200 rounded-xl bg-gray-50 font-mono text-xs focus:ring-2 focus:ring-primary-500 focus:bg-white outline-none resize-none"
+              />
+            </div>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setMostrarModalAi(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-550 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleAiConversion}
+                disabled={convertendoAi || !textoBrutoAi.trim()}
+                className="px-5 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                {convertendoAi ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                    <span>Convertendo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Converter com IA</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

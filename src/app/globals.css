@@ -34,6 +34,24 @@
     --primary-900: #1e3a8a !important;
   }
 
+  /* Reset layout boxes from flex to block to prevent fragment breaking bugs */
+  html,
+  body,
+  .flex-1,
+  main,
+  .max-w-3xl,
+  #cifra-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: relative !important;
+  }
+
   .print-clean {
     background: transparent !important;
     border: none !important;
@@ -46,6 +64,8 @@
   .print-columns-2 {
     column-count: 2 !important;
     column-gap: 2rem !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 }
 

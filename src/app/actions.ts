@@ -34,8 +34,23 @@ export async function convertPdfAction(formData: FormData): Promise<{ success: b
     // Importação dinâmica para rodar somente no lado do servidor
     const pdfParser = require("pdf-parse");
     const data = await pdfParser(buffer);
+    const rawText = data.text;
 
-    const lines: string[] = data.text.split('\n');
+    // Se houver uma chave da API do DeepSeek configurada, tenta converter via Inteligência Artificial
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (apiKey && rawText && rawText.trim().length > 0) {
+      try {
+        const aiResult = await convertTextWithAiAction(rawText);
+        if (aiResult.success && aiResult.text) {
+          return { success: true, text: aiResult.text };
+        }
+        console.warn("Falha ao converter PDF usando DeepSeek. Usando o parser local de fallback:", aiResult.error);
+      } catch (aiErr) {
+        console.error("Erro inesperado na chamada do DeepSeek para o PDF. Usando parser local:", aiErr);
+      }
+    }
+
+    const lines: string[] = rawText.split('\n');
     const resultLines: string[] = [];
     
     let pendingChords: { chord: string; index: number }[] = [];
@@ -158,5 +173,61 @@ export async function convertPdfAction(formData: FormData): Promise<{ success: b
   } catch (error: any) {
     console.error("Erro na conversão do PDF:", error);
     return { success: false, error: error?.message || "Erro desconhecido ao converter o PDF." };
+  }
+}
+
+export async function convertTextWithAiAction(rawText: string): Promise<{ success: boolean; text?: string; error?: string }> {
+  try {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "API Key do DeepSeek não configurada no servidor." };
+    }
+
+    const SYSTEM_PROMPT = `Você é um assistente especialista em música, liturgia e cifras de paróquias católicas.
+Sua tarefa é converter a cifra recebida do usuário (que pode estar em formato desordenado, com acordes escritos acima das linhas de texto ou misturados) para o formato inline estruturado do nosso leitor de cifras.
+
+Regras importantes de formatação:
+1. Insira os acordes exatamente no ponto da palavra/sílaba onde eles devem ser executados, delimitando-os com colchetes, por exemplo: [Dm]O amor do Senhor Deus.
+2. Mantenha os acordes corretos e a harmonia idêntica ao texto fornecido.
+3. Identifique as seções da música (ex: Intro, Refrão, Estrofe 1, Ponte, Solo, Final) e as rotule em linhas separadas terminando em dois pontos (ex: Intro:, Refrão:, Estrofe 1:).
+4. Limpe qualquer cabeçalho irrelevante do PDF (como datas, links de URL, paginação) que não faça parte da música em si.
+5. Retorne APENAS a cifra convertida final no formato solicitado. Não adicione saudações, explicações, nem blocos de código markdown (como \`\`\` ou \`\`\`txt). O resultado deve ser texto puro contendo a cifra.`;
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: rawText }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro na API do DeepSeek (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    let resultText = data.choices[0].message.content.trim();
+
+    // Limpar possíveis blocos de código markdown que a IA coloque por engano
+    if (resultText.startsWith("```")) {
+      // Remove a linha inicial ``` ou ```txt ou ```markdown
+      resultText = resultText.replace(/^```[a-zA-Z]*\n/, "");
+      // Remove a linha final ```
+      resultText = resultText.replace(/\n```$/, "");
+    }
+
+    return { success: true, text: resultText };
+  } catch (error: any) {
+    console.error("Erro na conversão com DeepSeek:", error);
+    return { success: false, error: error?.message || "Erro desconhecido ao chamar a API da IA." };
   }
 }
