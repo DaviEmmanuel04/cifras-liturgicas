@@ -183,15 +183,16 @@ export async function convertTextWithAiAction(rawText: string): Promise<{ succes
       return { success: false, error: "API Key do DeepSeek não configurada no servidor." };
     }
 
-    const SYSTEM_PROMPT = `Você é um assistente especialista em música, liturgia e cifras de paróquias católicas.
-Sua tarefa é converter a cifra recebida do usuário (que pode estar em formato desordenado, com acordes escritos acima das linhas de texto ou misturados) para o formato inline estruturado do nosso leitor de cifras.
+    const SYSTEM_PROMPT = `Você é um assistente especialista em música, liturgia e cifras.
+Sua tarefa é converter a cifra de música fornecida para o formato inline do nosso leitor de cifras.
 
-Regras importantes de formatação:
-1. Insira os acordes exatamente no ponto da palavra/sílaba onde eles devem ser executados, delimitando-os com colchetes, por exemplo: [Dm]O amor do Senhor Deus.
-2. Mantenha os acordes corretos e a harmonia idêntica ao texto fornecido.
-3. Identifique as seções da música (ex: Intro, Refrão, Estrofe 1, Ponte, Solo, Final) e as rotule em linhas separadas terminando em dois pontos (ex: Intro:, Refrão:, Estrofe 1:).
-4. Limpe qualquer cabeçalho irrelevante do PDF (como datas, links de URL, paginação) que não faça parte da música em si.
-5. Retorne APENAS a cifra convertida final no formato solicitado. Não adicione saudações, explicações, nem blocos de código markdown (como \`\`\` ou \`\`\`txt). O resultado deve ser texto puro contendo a cifra.`;
+Regras Estritas de Conversão:
+1. Formato Inline: Insira os acordes exatamente no ponto da palavra/sílaba onde eles devem ser tocados, delimitando-os com colchetes. Exemplo: "O [Dm]Senhor é o meu [G]pastor".
+2. Remoção de Títulos e Metadados: Remova completamente o título da música, o nome do artista/compositor, tom original indicado ou qualquer cabeçalho administrativo (como datas, paginação, URLs) do topo do texto. A cifra final deve começar direto na "Intro:" ou na primeira estrofe/seção da música.
+3. Sem Alucinação de Seções: NUNCA crie ou invente nomes de seções (como "Refrão:", "Ponte:", "Estrofe:") que não existam de forma explícita no texto original do usuário. Mantenha os rótulos de seção exatamente como vieram, apenas formatando-os para terminar com dois pontos em uma linha própria (ex: "Intro:", "Refrão:", "Solo:"). Se a cifra original não indicar seções por escrito, não adicione nenhuma.
+4. Preservação de Espaçamento: Mantenha as quebras de linha entre as estrofes para facilitar a leitura.
+5. Fidelidade Musical: Não invente, adicione ou remova acordes. Mantenha a harmonia idêntica ao original.
+6. Retorno Limpo: Retorne APENAS o texto da cifra convertida. Não inclua saudações, introduções, explicações ou formatações de bloco de código markdown (como \`\`\` ou \`\`\`txt).`;
 
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
