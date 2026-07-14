@@ -22,7 +22,7 @@ const colorOptions = [
   { value: "black", label: "Fiéis Defuntos (Preto)", bgClass: "bg-[#1f1f1f] text-white border-transparent" },
 ];
 
-const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
+const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 
 type Musica = {
