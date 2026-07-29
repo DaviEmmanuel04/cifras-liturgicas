@@ -36,20 +36,6 @@ export async function convertPdfAction(formData: FormData): Promise<{ success: b
     const data = await pdfParser(buffer);
     const rawText = data.text;
 
-    // Se houver uma chave da API do DeepSeek configurada, tenta converter via Inteligência Artificial
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (apiKey && rawText && rawText.trim().length > 0) {
-      try {
-        const aiResult = await convertTextWithAiAction(rawText);
-        if (aiResult.success && aiResult.text) {
-          return { success: true, text: aiResult.text };
-        }
-        console.warn("Falha ao converter PDF usando DeepSeek. Usando o parser local de fallback:", aiResult.error);
-      } catch (aiErr) {
-        console.error("Erro inesperado na chamada do DeepSeek para o PDF. Usando parser local:", aiErr);
-      }
-    }
-
     const lines: string[] = rawText.split('\n');
     const resultLines: string[] = [];
     
@@ -59,112 +45,65 @@ export async function convertPdfAction(formData: FormData): Promise<{ success: b
     const exactChordRegex = new RegExp(chordRegexStr);
     const searchChordRegex = new RegExp("(\\(?[A-G][#b]?(?:m|M|maj|min|dim|aug|sus)?(?:[0-9])*(?:\\/[A-G][#b]?)?\\)?)", "g");
 
-    const sectionRegex = /^\s*\[?(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)\]?[\:\-]?\s*$/i;
-    const prefixRegex = /^\s*\[?(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)\]?[\:\-]?\s*/i;
-
-    function isChordLine(line: string) {
-      const trimmed = line.trim();
-      if (trimmed.length === 0) return false;
-      
-      const cleanLine = trimmed.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)[\:\-]?/gi, '').trim();
-      if (cleanLine.length === 0) return false;
-
-      const parts = cleanLine.split(/\s+/);
-      
-      let validChords = 0;
-      for (const part of parts) {
-        const p = part.replace(/[\(\)]/g, '');
-        if (exactChordRegex.test(p)) {
-          validChords++;
-        }
-      }
-      
-      return (validChords / parts.length) >= 0.7;
-    }
-
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].replace(/\r/g, ''); // Limpar quebras
+      const line = lines[i];
+      const trimmedLine = line.trim();
 
-      // 1. Checar se é uma linha de seção isolada (ex: [Refrão], Intro:)
-      const sectionMatch = line.match(sectionRegex);
-      if (sectionMatch) {
+      if (!trimmedLine) {
         if (pendingChords.length > 0) {
-          let blankLine = "";
-          for (const { chord, index } of pendingChords) {
-            if (index > blankLine.length) {
-              blankLine = blankLine.padEnd(index, ' ');
-            }
-            blankLine += `[${chord}]`;
-          }
-          resultLines.push(blankLine.trim());
+          resultLines.push(pendingChords.map(c => `[${c.chord}]`).join(' '));
           pendingChords = [];
         }
-        const sectionName = sectionMatch[1].charAt(0).toUpperCase() + sectionMatch[1].slice(1).toLowerCase();
-        resultLines.push(`${sectionName}:`);
+        resultLines.push('');
         continue;
       }
 
-      if (isChordLine(line)) {
-        const prefixMatch = line.match(prefixRegex);
-        if (prefixMatch) {
-          const sectionName = prefixMatch[1].charAt(0).toUpperCase() + prefixMatch[1].slice(1).toLowerCase();
-          resultLines.push(`${sectionName}:`);
+      const tokens = trimmedLine.split(/\s+/);
+      const isAllChords = tokens.every(token => {
+        const cleanToken = token.replace(/[()]/g, '');
+        return exactChordRegex.test(cleanToken);
+      });
+
+      if (isAllChords) {
+        if (pendingChords.length > 0) {
+          resultLines.push(pendingChords.map(c => `[${c.chord}]`).join(' '));
+          pendingChords = [];
         }
 
         let match;
-        const lineWithoutStructure = line.replace(/(Intro|Refrão|Refrao|Estrofe|Ponte|Final|Vocal|Banda|Solo|Coro|Ministro|Todos)[\:\-]?/gi, match => ' '.repeat(match.length));
-        
         searchChordRegex.lastIndex = 0;
-        while ((match = searchChordRegex.exec(lineWithoutStructure)) !== null) {
-          const before = match.index === 0 ? ' ' : lineWithoutStructure[match.index - 1];
-          const after = (match.index + match[0].length === lineWithoutStructure.length) ? ' ' : lineWithoutStructure[match.index + match[0].length];
-          
-          if (/[\s\(\)]/.test(before) && /[\s\(\)]/.test(after)) {
-            const cleanChord = match[0].replace(/[\(\)]/g, '');
-            pendingChords.push({ chord: cleanChord, index: match.index });
-          }
+        while ((match = searchChordRegex.exec(line)) !== null) {
+          const rawChord = match[0].replace(/[()]/g, '');
+          pendingChords.push({
+            chord: rawChord,
+            index: match.index
+          });
         }
       } else {
-        let currentLine = line;
-        
         if (pendingChords.length > 0) {
-          if (currentLine.trim() === '') {
-            let blankLine = "";
-            for (const { chord, index } of pendingChords) {
-              if (index > blankLine.length) {
-                blankLine = blankLine.padEnd(index, ' ');
-              }
-              blankLine += `[${chord}]`;
+          let lineChars = line.split('');
+          
+          pendingChords.sort((a, b) => b.index - a.index);
+
+          for (const pc of pendingChords) {
+            const chordTag = `[${pc.chord}]`;
+            if (pc.index < lineChars.length) {
+              lineChars.splice(pc.index, 0, chordTag);
+            } else {
+              lineChars.push(' ' + chordTag);
             }
-            resultLines.push(blankLine.trim());
-          } else {
-            for (let j = pendingChords.length - 1; j >= 0; j--) {
-              const { chord, index } = pendingChords[j];
-              
-              if (index > currentLine.length) {
-                currentLine = currentLine.padEnd(index, ' ');
-              }
-              
-              currentLine = currentLine.substring(0, index) + `[${chord}]` + currentLine.substring(index);
-            }
-            resultLines.push(currentLine.trimEnd());
           }
+
+          resultLines.push(lineChars.join(''));
           pendingChords = [];
         } else {
-          resultLines.push(currentLine.trimEnd());
+          resultLines.push(line);
         }
       }
     }
 
     if (pendingChords.length > 0) {
-      let blankLine = "";
-      for (const { chord, index } of pendingChords) {
-        if (index > blankLine.length) {
-          blankLine = blankLine.padEnd(index, ' ');
-        }
-        blankLine += `[${chord}]`;
-      }
-      resultLines.push(blankLine.trim());
+      resultLines.push(pendingChords.map(c => `[${c.chord}]`).join(' '));
     }
 
     const cleanOutput = resultLines.join('\n').replace(/\n{3,}/g, '\n\n');
@@ -173,62 +112,5 @@ export async function convertPdfAction(formData: FormData): Promise<{ success: b
   } catch (error: any) {
     console.error("Erro na conversão do PDF:", error);
     return { success: false, error: error?.message || "Erro desconhecido ao converter o PDF." };
-  }
-}
-
-export async function convertTextWithAiAction(rawText: string): Promise<{ success: boolean; text?: string; error?: string }> {
-  try {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      return { success: false, error: "API Key do DeepSeek não configurada no servidor." };
-    }
-
-    const SYSTEM_PROMPT = `Você é um assistente especialista em música, liturgia e cifras.
-Sua tarefa é converter a cifra de música fornecida para o formato inline do nosso leitor de cifras.
-
-Regras Estritas de Conversão:
-1. Formato Inline: Insira os acordes exatamente no ponto da palavra/sílaba onde eles devem ser tocados, delimitando-os com colchetes. Exemplo: "O [Dm]Senhor é o meu [G]pastor".
-2. Remoção de Títulos e Metadados: Remova completamente o título da música, o nome do artista/compositor, tom original indicado ou qualquer cabeçalho administrativo (como datas, paginação, URLs) do topo do texto. A cifra final deve começar direto na "Intro:" ou na primeira estrofe/seção da música.
-3. Sem Alucinação de Seções: NUNCA crie ou invente nomes de seções (como "Refrão:", "Ponte:", "Estrofe:") que não existam de forma explícita no texto original do usuário. Mantenha os rótulos de seção exatamente como vieram, apenas formatando-os para terminar com dois pontos em uma linha própria (ex: "Intro:", "Refrão:", "Solo:"). Se a cifra original não indicar seções por escrito, não adicione nenhuma.
-4. Preservação de Espaçamento: Mantenha as quebras de linha entre as estrofes para facilitar a leitura.
-5. Fidelidade Musical: Não invente, adicione ou remova acordes. Mantenha a harmonia idêntica ao original.
-6. Retorno Limpo: Retorne APENAS o texto da cifra convertida. Não inclua saudações, introduções, explicações ou formatações de bloco de código markdown (como \`\`\` ou \`\`\`txt).`;
-
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: rawText }
-        ],
-        temperature: 0.1
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro na API do DeepSeek (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    let resultText = data.choices[0].message.content.trim();
-
-    // Limpar possíveis blocos de código markdown que a IA coloque por engano
-    if (resultText.startsWith("```")) {
-      // Remove a linha inicial ``` ou ```txt ou ```markdown
-      resultText = resultText.replace(/^```[a-zA-Z]*\n/, "");
-      // Remove a linha final ```
-      resultText = resultText.replace(/\n```$/, "");
-    }
-
-    return { success: true, text: resultText };
-  } catch (error: any) {
-    console.error("Erro na conversão com DeepSeek:", error);
-    return { success: false, error: error?.message || "Erro desconhecido ao chamar a API da IA." };
   }
 }
