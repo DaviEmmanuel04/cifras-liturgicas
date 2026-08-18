@@ -12,20 +12,23 @@ export interface LineToken {
   tokens: WordToken[];
 }
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
+export function generateId(prefix: string = "gen"): string {
+  return `${prefix}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
  * Converte uma string de cifra no formato [Acorde]Letra em uma estrutura de tokens editáveis.
- * Palavras são divididas em pedaços de 2 caracteres para permitir posicionar acordes em sílabas exatas.
+ * IDs determinísticos garantem estabilidade de foco no editor interativo.
  */
 export function parseBracketString(texto: string): LineToken[] {
   const linhas = texto.split('\n');
 
-  return linhas.map((linha) => {
+  return linhas.map((linha, lIdx) => {
     const linhaTrim = linha.trim();
-    const lineId = generateId();
+    const lineId = `l_${lIdx}`;
+    let tokenCounter = 0;
+
+    const getTokenId = () => `l_${lIdx}_t_${tokenCounter++}`;
 
     // 1. Título de Seção (Refrão:, Intro:, **Ponte**)
     const temAcordes = linha.includes('[');
@@ -48,11 +51,19 @@ export function parseBracketString(texto: string): LineToken[] {
       if (!parte) continue;
 
       if (parte.startsWith('[') && parte.endsWith(']')) {
+        // Se tínhamos um acorde pendente anterior sem texto entre eles (ex: [Dm][G7] ou [Dm] [G7])
+        if (acordePendente !== null) {
+          tokens.push({
+            id: getTokenId(),
+            text: ' ',
+            chord: acordePendente,
+            isWord: false
+          });
+        }
         acordePendente = parte.slice(1, -1);
       } else {
         // Divide o texto da parte em palavras e espaços
         const subPartes = parte.split(/(\s+)/g);
-        let atribuiuAcordeNestaParte = false;
 
         for (let j = 0; j < subPartes.length; j++) {
           const sub = subPartes[j];
@@ -61,10 +72,20 @@ export function parseBracketString(texto: string): LineToken[] {
           const eEspaco = /^\s+$/.test(sub);
 
           if (eEspaco) {
+            // Se tivermos um acorde pendente e não houver mais palavras à frente nesta parte
+            let chordParaEspaco: string | null = null;
+            if (acordePendente !== null) {
+              const haPalavraDepois = subPartes.slice(j + 1).some(s => s.trim().length > 0);
+              if (!haPalavraDepois) {
+                chordParaEspaco = acordePendente;
+                acordePendente = null;
+              }
+            }
+
             tokens.push({
-              id: generateId(),
+              id: getTokenId(),
               text: sub,
-              chord: null,
+              chord: chordParaEspaco,
               isWord: false
             });
           } else {
@@ -73,14 +94,13 @@ export function parseBracketString(texto: string): LineToken[] {
               const pedaco = sub.slice(k, k + 2);
               let acordeDoToken: string | null = null;
 
-              if (acordePendente !== null && !atribuiuAcordeNestaParte) {
+              if (acordePendente !== null) {
                 acordeDoToken = acordePendente;
                 acordePendente = null;
-                atribuiuAcordeNestaParte = true;
               }
 
               tokens.push({
-                id: generateId(),
+                id: getTokenId(),
                 text: pedaco,
                 chord: acordeDoToken,
                 isWord: true
@@ -91,10 +111,10 @@ export function parseBracketString(texto: string): LineToken[] {
       }
     }
 
-    // Se sobrou um acorde pendente no final da linha
+    // Se sobrou um acorde pendente no final da linha (ex: [G7] no final)
     if (acordePendente !== null) {
       tokens.push({
-        id: generateId(),
+        id: getTokenId(),
         text: ' ',
         chord: acordePendente,
         isWord: false
