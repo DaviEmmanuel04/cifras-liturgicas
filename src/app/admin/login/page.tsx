@@ -19,13 +19,16 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Firebase exige email, então criamos um email fictício baseado no usuário
-      const fakeEmail = `${username.toLowerCase()}@cifrasliturgicas.com`;
-      await signInWithEmailAndPassword(auth, fakeEmail, password);
+      const input = username.trim();
+      const emailToUse = input.includes("@")
+        ? input
+        : `${input.toLowerCase()}@cifrasliturgicas.com`;
+
+      await signInWithEmailAndPassword(auth, emailToUse, password);
       router.push("/admin/dashboard");
     } catch (err: any) {
       console.error(err);
-      setError("Usuário ou senha incorretos.");
+      setError("Usuário/E-mail ou senha incorretos.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +51,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Usuário
+              Usuário ou E-mail
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -60,7 +63,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 className="w-full pl-10 pr-3 py-2 border border-[#e4ded0] rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
-                placeholder="Ex: adminDasCifras"
+                placeholder="Ex: admin ou usuario@email.com"
               />
             </div>
           </div>

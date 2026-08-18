@@ -17,17 +17,31 @@ export function ChordDiagram({ nome }: ChordDiagramProps) {
     );
   }
 
-  const { frets, baseFret } = shape;
+  const { frets, baseFret, barre } = shape;
   
   // Definições de coordenadas
   const stringsX = [20, 28, 36, 44, 52, 60];
   const fretsY = [28, 40, 52, 64, 76, 88];
 
-  // Algoritmo de detecção automática de pestana (barré)
+  // Algoritmo de detecção de pestana (barré)
   const detectarPestana = () => {
+    // 1. Desativado explicitamente no dicionário
+    if (barre === false) return null;
+
+    // 2. Definido explicitamente no dicionário
+    if (typeof barre === "object" && barre !== null) {
+      return barre;
+    }
+
+    // 3. Em acordes da 1ª casa com cordas soltas (0), NÃO é pestana (ex: D, C, A, E)
+    const temCordasSoltas = frets.some(f => f === 0);
+    if (baseFret === 1 && temCordasSoltas && barre !== true) {
+      return null;
+    }
+
     const contagem: Record<number, number[]> = {};
     frets.forEach((f, idx) => {
-      if (typeof f === 'number' && f > 0) {
+      if (typeof f === "number" && f > 0) {
         if (!contagem[f]) contagem[f] = [];
         contagem[f].push(idx);
       }
