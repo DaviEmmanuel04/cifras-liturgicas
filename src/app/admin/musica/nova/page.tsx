@@ -12,6 +12,7 @@ import { TablaturaEditor } from "@/components/TablaturaEditor";
 import { convertPdfAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
+import { tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -110,7 +111,7 @@ export default function NovaMusicaPage() {
     try {
       await addDoc(collection(db, "musicas"), {
         ...formData,
-        tablaturas,
+        tablaturas: tablaturasParaFirestore(tablaturas),
         criadoEm: new Date().toISOString(),
         criadoPor: auth.currentUser?.email || "Anônimo",
         atualizadoEm: new Date().toISOString(),

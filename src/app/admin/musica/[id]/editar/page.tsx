@@ -12,6 +12,7 @@ import { TablaturaEditor } from "@/components/TablaturaEditor";
 import { convertPdfAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
+import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -67,7 +68,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             atualizadoEm: data.atualizadoEm || "",
             atualizadoPor: data.atualizadoPor || ""
           });
-          const secoesCarregadas: SecaoTablatura[] = data.tablaturas || [];
+          const secoesCarregadas: SecaoTablatura[] = tablaturasDeFirestore(data.tablaturas);
           setTablaturas(secoesCarregadas);
           if (secoesCarregadas.length > 0) {
             setTomTravado(data.tom || "");
@@ -163,7 +164,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         tempo: formData.tempo,
         tom: formData.tom,
         letraCifra: formData.letraCifra,
-        tablaturas,
+        tablaturas: tablaturasParaFirestore(tablaturas),
         atualizadoEm: new Date().toISOString(),
         atualizadoPor: auth.currentUser?.email || "Anônimo"
       });

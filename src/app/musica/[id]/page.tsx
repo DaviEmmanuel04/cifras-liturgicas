@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, use } from 'react';
 import { Musica } from '@/types/musica';
+import { tablaturasDeFirestore } from '@/utils/tablaturaFirestore';
 
 export default function MusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -22,7 +23,8 @@ export default function MusicaPage({ params }: { params: Promise<{ id: string }>
         if (!docSnap.exists()) {
           setNotFoundState(true);
         } else {
-          setMusica({ id: docSnap.id, ...docSnap.data() } as Musica);
+          const data = docSnap.data();
+          setMusica({ id: docSnap.id, ...data, tablaturas: tablaturasDeFirestore(data.tablaturas) } as Musica);
         }
       } catch (error) {
         console.error("Erro ao buscar música:", error);
