@@ -25,3 +25,10 @@ export type SecaoTablatura = {
   nome: string;
   passos: Passo[];
 };
+
+/**
+ * Rótulos de corda, do grave (índice 0) ao agudo (índice 5) — mesma ordem do
+ * ChordShape em dicionarioAcordes.ts. Compartilhado entre o editor admin
+ * (TablaturaEditor) e a exibição pro visitante (TablaturaViewer).
+ */
+export const CORDAS_TABLATURA = ["E", "A", "D", "G", "B", "e"] as const;

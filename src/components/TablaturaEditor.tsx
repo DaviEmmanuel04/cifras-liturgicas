@@ -2,11 +2,7 @@
 
 import { Plus, Trash2, X } from "lucide-react";
 import { generateId } from "@/utils/cifraParser";
-import type { Nota, Passo, SecaoTablatura } from "@/types/tablatura";
-
-// Rótulos de corda, do grave (índice 0) ao agudo (índice 5) — mesma ordem do
-// ChordShape em dicionarioAcordes.ts.
-const CORDAS = ["E", "A", "D", "G", "B", "e"];
+import { CORDAS_TABLATURA, type Nota, type Passo, type SecaoTablatura } from "@/types/tablatura";
 
 type TablaturaEditorProps = {
   secoes: SecaoTablatura[];
@@ -146,7 +142,7 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
         <div className="overflow-x-auto">
           <table className="border-collapse text-xs">
             <tbody>
-              {CORDAS.map((label, cordaIdx) => (
+              {CORDAS_TABLATURA.map((label, cordaIdx) => (
                 <tr key={cordaIdx}>
                   <td className="pr-2 font-mono font-bold text-gray-500 text-center w-5">{label}</td>
                   {secao.passos.map((passo, passoIdx) => (
