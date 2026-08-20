@@ -12,6 +12,12 @@ import type { Nota, SecaoTablatura } from "@/types/tablatura";
  * continua puro — a conversão é responsabilidade de quem lê/escreve no
  * Firestore, não do resto do app. Mapeamento de dado puro — sem SDK do
  * Firestore, sem I/O.
+ *
+ * `tablaturasDeFirestore` aceita tanto o formato envolvido (`{ notas }`)
+ * quanto o formato antigo/cru (`Passo` como array direto) — documentos
+ * gravados antes desta conversão existir não têm Passos (o próprio bug que
+ * este módulo corrige impedia salvar Seções com Passos), mas ler os dois
+ * formatos custa pouco e evita depender dessa suposição.
  */
 type PassoFirestore = { notas: Nota[] };
 
@@ -34,6 +40,8 @@ export function tablaturasDeFirestore(bruto: unknown): SecaoTablatura[] {
   return bruto.map((secao: SecaoTablaturaFirestore) => ({
     id: secao.id,
     nome: secao.nome,
-    passos: Array.isArray(secao.passos) ? secao.passos.map((passo) => passo.notas ?? []) : [],
+    passos: Array.isArray(secao.passos)
+      ? secao.passos.map((passo) => (Array.isArray(passo) ? passo : (passo?.notas ?? [])))
+      : [],
   }));
 }

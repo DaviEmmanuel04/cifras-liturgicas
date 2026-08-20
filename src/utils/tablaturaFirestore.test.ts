@@ -70,4 +70,12 @@ describe("tablaturasDeFirestore", () => {
     expect(tablaturasDeFirestore(undefined)).toEqual([]);
     expect(tablaturasDeFirestore(null)).toEqual([]);
   });
+
+  it("aceita um Passo já no formato cru (array direto, sem o envelope `notas`)", () => {
+    const bruto = [{ id: "s1", nome: "Intro", passos: [[{ corda: 0, casa: 3 }]] }];
+
+    expect(tablaturasDeFirestore(bruto)).toEqual([
+      { id: "s1", nome: "Intro", passos: [[{ corda: 0, casa: 3 }]] },
+    ]);
+  });
 });
