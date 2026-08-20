@@ -5,10 +5,11 @@ import { CifraViewer } from '@/components/CifraViewer';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, use } from 'react';
+import { Musica } from '@/types/musica';
 
 export default function MusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [musica, setMusica] = useState<any>(null);
+  const [musica, setMusica] = useState<Musica | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFoundState, setNotFoundState] = useState(false);
 
@@ -21,7 +22,7 @@ export default function MusicaPage({ params }: { params: Promise<{ id: string }>
         if (!docSnap.exists()) {
           setNotFoundState(true);
         } else {
-          setMusica({ id: docSnap.id, ...docSnap.data() });
+          setMusica({ id: docSnap.id, ...docSnap.data() } as Musica);
         }
       } catch (error) {
         console.error("Erro ao buscar música:", error);

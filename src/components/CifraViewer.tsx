@@ -7,20 +7,7 @@ import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
 import Image from "next/image";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
-
-type Musica = {
-  id: string;
-  titulo: string;
-  artista?: string;
-  categoria: string;
-  tempo: string;
-  tom: string;
-  letraCifra: string;
-  criadoPor?: string;
-  criadoEm?: string;
-  modificadoPor?: string;
-  modificadoEm?: string;
-};
+import { Musica } from "@/types/musica";
 
 export function CifraViewer({ musica }: { musica: Musica }) {
   const [semitons, setSemitons] = useState(0);
