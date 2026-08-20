@@ -8,8 +8,10 @@ import Link from "next/link";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
+import { TablaturaEditor } from "@/components/TablaturaEditor";
 import { convertPdfAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
+import type { SecaoTablatura } from "@/types/tablatura";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -31,6 +33,11 @@ export default function NovaMusicaPage() {
     tom: "",
     letraCifra: ""
   });
+  const [tablaturas, setTablaturas] = useState<SecaoTablatura[]>([]);
+  // Trava assim que a primeira Seção é adicionada, pra o Tom exibido no
+  // editor de Tablatura parar de seguir o campo "Tom Original" ao vivo —
+  // evita ambiguidade sobre a partir de qual Tom as casas foram digitadas.
+  const [tomTravado, setTomTravado] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -67,6 +74,13 @@ export default function NovaMusicaPage() {
     }
   };
 
+  const handleTablaturasChange = (novasSecoes: typeof tablaturas) => {
+    if (tomTravado === "" && novasSecoes.length > 0) {
+      setTomTravado(formData.tom);
+    }
+    setTablaturas(novasSecoes);
+  };
+
   const inserirColchetes = () => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -96,6 +110,7 @@ export default function NovaMusicaPage() {
     try {
       await addDoc(collection(db, "musicas"), {
         ...formData,
+        tablaturas,
         criadoEm: new Date().toISOString(),
         criadoPor: auth.currentUser?.email || "Anônimo",
         atualizadoEm: new Date().toISOString(),
@@ -293,6 +308,10 @@ export default function NovaMusicaPage() {
                   </>
                 }
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <TablaturaEditor secoes={tablaturas} onChange={handleTablaturasChange} tom={tomTravado || formData.tom} />
             </div>
           </div>
 
