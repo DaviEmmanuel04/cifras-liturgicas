@@ -7,6 +7,8 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getLiturgicalDay } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
+import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
+import type { SecaoTablatura } from "@/types/tablatura";
 import { CifraViewer } from "./CifraViewer";
 
 type Musica = {
@@ -17,6 +19,7 @@ type Musica = {
   tempo: string;
   tom: string;
   letraCifra: string;
+  tablaturas?: SecaoTablatura[];
 };
 
 type Repertorio = {
@@ -152,7 +155,12 @@ export function MusicaList() {
         const querySnapshot = await getDocs(collection(db, "musicas"));
         const lista: Musica[] = [];
         querySnapshot.forEach((doc) => {
-          lista.push({ id: doc.id, ...doc.data() } as Musica);
+          const data = doc.data();
+          lista.push({
+            id: doc.id,
+            ...data,
+            tablaturas: tablaturasDeFirestore(data.tablaturas),
+          } as Musica);
         });
         setMusicas(lista);
 
