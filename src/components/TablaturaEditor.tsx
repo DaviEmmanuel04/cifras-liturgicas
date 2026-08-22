@@ -2,7 +2,8 @@
 
 import { Plus, Trash2, X } from "lucide-react";
 import { generateId } from "@/utils/cifraParser";
-import { CORDAS_TABLATURA, type Nota, type Passo, type SecaoTablatura } from "@/types/tablatura";
+import { parseNota, simboloNota } from "@/utils/execucaoTablatura";
+import { CORDAS_TABLATURA, type Passo, type SecaoTablatura } from "@/types/tablatura";
 
 type TablaturaEditorProps = {
   secoes: SecaoTablatura[];
@@ -94,26 +95,27 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
     onChange({ ...secao, passos: secao.passos.filter((_, i) => i !== passoIdx) });
   }
 
-  function definirCasa(passoIdx: number, corda: number, casaTexto: string) {
+  function definirCasa(passoIdx: number, corda: number, texto: string) {
     const passos = secao.passos.map((passo, i) => {
       if (i !== passoIdx) return passo;
 
       const semCorda = passo.filter((n) => n.corda !== corda);
-      if (casaTexto === "") return semCorda;
+      if (texto === "") return semCorda;
 
-      const casa = Number(casaTexto);
-      if (!Number.isInteger(casa) || casa < 0) return passo;
+      // Entrada inválida (letra desconhecida, sufixo duplicado, negativo)
+      // não altera a Nota da célula — nem remove a que já existia.
+      const nota = parseNota(texto, corda);
+      if (!nota) return passo;
 
-      const nota: Nota = { corda, casa };
       return [...semCorda, nota].sort((a, b) => a.corda - b.corda);
     });
 
     onChange({ ...secao, passos });
   }
 
-  function casaDoPasso(passo: Passo, corda: number): string {
+  function textoDaCasa(passo: Passo, corda: number, passoSeguinte: Passo | undefined): string {
     const nota = passo.find((n) => n.corda === corda);
-    return nota ? String(nota.casa) : "";
+    return nota ? simboloNota(nota, passoSeguinte) : "";
   }
 
   return (
@@ -148,10 +150,11 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
                   {secao.passos.map((passo, passoIdx) => (
                     <td key={passoIdx} className="p-0.5">
                       <input
-                        type="number"
-                        min={0}
-                        value={casaDoPasso(passo, cordaIdx)}
+                        type="text"
+                        value={textoDaCasa(passo, cordaIdx, secao.passos[passoIdx + 1])}
                         onChange={(e) => definirCasa(passoIdx, cordaIdx, e.target.value)}
+                        placeholder="—"
+                        title="Casa (ex: 5), abafada (x), ou casa+técnica (5h, 5p, 5/, 5\, 5~)"
                         className="w-11 text-center border border-gray-300 rounded p-1 bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                       />
                     </td>

@@ -1,5 +1,6 @@
 import { CORDAS_TABLATURA, type SecaoTablatura } from "@/types/tablatura";
 import { transporTablatura } from "@/utils/transposicaoTablatura";
+import { simboloNota } from "@/utils/execucaoTablatura";
 
 type TablaturaViewerProps = {
   secoes: SecaoTablatura[];
@@ -41,12 +42,13 @@ function SecaoTablaturaDisplay({ secao }: { secao: SecaoTablatura }) {
                 </td>
                 {secao.passos.map((passo, passoIdx) => {
                   const nota = passo.find((n) => n.corda === cordaIdx);
+                  const passoSeguinte = secao.passos[passoIdx + 1];
                   return (
                     <td
                       key={passoIdx}
                       className="w-7 h-6 text-center border-b border-gray-150 text-gray-800 print:text-black"
                     >
-                      {nota ? nota.casa : "—"}
+                      {nota ? simboloNota(nota, passoSeguinte) : "—"}
                     </td>
                   );
                 })}

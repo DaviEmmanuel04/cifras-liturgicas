@@ -1,4 +1,4 @@
-import type { Nota, Passo, SecaoTablatura } from "@/types/tablatura";
+import { ehNotaAbafada, type Nota, type Passo, type SecaoTablatura } from "@/types/tablatura";
 
 const CASA_MIN = 0;
 const CASA_MAX = 20;
@@ -11,6 +11,9 @@ function envolverPorOitava(casa: number): number {
 }
 
 function transporNota(nota: Nota, semitons: number): Nota {
+  // Nota abafada não tem `casa` pra deslocar — passa intocada (ver ADR 0002).
+  if (ehNotaAbafada(nota)) return nota;
+
   return { ...nota, casa: envolverPorOitava(nota.casa + semitons) };
 }
 

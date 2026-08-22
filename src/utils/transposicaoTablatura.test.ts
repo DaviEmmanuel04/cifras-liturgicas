@@ -78,4 +78,40 @@ describe("transporTablatura", () => {
 
     expect(passos).toEqual([[{ corda: 0, casa: 3 }]]);
   });
+
+  it("passa uma Nota abafada intocada, sem tentar ler/deslocar `casa`", () => {
+    const passos: Passo[] = [[{ corda: 0, tipo: "abafada" }]];
+
+    expect(transporTablatura(passos, 5)).toEqual([[{ corda: 0, tipo: "abafada" }]]);
+  });
+
+  it("desloca `casa` normalmente numa Nota com técnica, preservando a técnica junto", () => {
+    const passos: Passo[] = [[{ corda: 0, casa: 5, tecnica: "ligadura" }]];
+
+    expect(transporTablatura(passos, 2)).toEqual([[{ corda: 0, casa: 7, tecnica: "ligadura" }]]);
+  });
+
+  it("envolve por oitava uma Nota com técnica, preservando a técnica junto", () => {
+    const passos: Passo[] = [[{ corda: 0, casa: 19, tecnica: "slide" }]];
+
+    expect(transporTablatura(passos, 3)).toEqual([[{ corda: 0, casa: 10, tecnica: "slide" }]]);
+  });
+
+  it("mistura Nota tocada, Nota com técnica e Nota abafada no mesmo Passo", () => {
+    const passos: Passo[] = [
+      [
+        { corda: 0, casa: 3 },
+        { corda: 1, casa: 5, tecnica: "vibrato" },
+        { corda: 2, tipo: "abafada" },
+      ],
+    ];
+
+    expect(transporTablatura(passos, 2)).toEqual([
+      [
+        { corda: 0, casa: 5 },
+        { corda: 1, casa: 7, tecnica: "vibrato" },
+        { corda: 2, tipo: "abafada" },
+      ],
+    ]);
+  });
 });
