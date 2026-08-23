@@ -11,6 +11,7 @@ import { RepertorioManager } from "@/components/RepertorioManager";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { useLiturgicalTheme, LiturgicalThemeMode } from "@/components/LiturgicalThemeProvider";
 import { Musica } from "@/types/musica";
+import { versoesDeFirestore } from "@/utils/versaoFirestore";
 
 const colorOptions = [
   { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 border-[#d4cdbd] font-bold" },
@@ -48,7 +49,13 @@ export default function DashboardPage() {
       const querySnapshot = await getDocs(collection(db, "musicas"));
       const lista: Musica[] = [];
       querySnapshot.forEach((doc) => {
-        lista.push({ id: doc.id, ...doc.data() } as Musica);
+        const data = doc.data();
+        // `versoes`, quando presente, precisa decodificar suas Tablaturas
+        // (formato seguro pro Firestore) antes de virar dado de domínio —
+        // mesma fronteira já cruzada em MusicaList e na página pública
+        // (ver versaoFirestore.ts). O RepertorioManager lê `versoes` daqui
+        // pra montar o seletor de Versão fixada por item de Repertório.
+        lista.push({ id: doc.id, ...data, versoes: data.versoes ? versoesDeFirestore(data.versoes) : undefined } as Musica);
       });
       setMusicas(lista);
     } catch (error) {

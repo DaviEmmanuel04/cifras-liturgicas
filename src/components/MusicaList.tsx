@@ -8,19 +8,10 @@ import { db } from "@/lib/firebase";
 import { getLiturgicalDay } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
-import type { SecaoTablatura } from "@/types/tablatura";
+import { versoesDeFirestore } from "@/utils/versaoFirestore";
+import { resolverConteudoVersao } from "@/utils/resolverVersao";
+import type { Musica } from "@/types/musica";
 import { CifraViewer } from "./CifraViewer";
-
-type Musica = {
-  id: string;
-  titulo: string;
-  artista?: string;
-  categoria: string;
-  tempo: string;
-  tom: string;
-  letraCifra: string;
-  tablaturas?: SecaoTablatura[];
-};
 
 type Repertorio = {
   id: string;
@@ -28,6 +19,8 @@ type Repertorio = {
   data: string;
   ativo: boolean;
   musicasIds: string[];
+  /** Música → Versão fixada nesse item — ausente enquanto nenhum item deste Repertório fixa nada. */
+  versoesFixadas?: Record<string, string>;
 };
 
 function obterTrechoLetra(letraCifra: string, maxLength = 90): string {
@@ -65,6 +58,10 @@ export function MusicaList() {
   const [selectedRepTabId, setSelectedRepTabId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);
   const [selectedMusicaId, setSelectedMusicaId] = useState<string | null>(null);
+  // Versão explicitamente escolhida (por um link de repertório, ou por um
+  // link salvo/compartilhado) pra `selectedMusicaId` — undefined cai pra
+  // Principal via `resolverConteudoVersao`, mesma resolução do ticket 1.
+  const [selectedVersaoId, setSelectedVersaoId] = useState<string | null>(null);
 
   // Sincroniza a URL inicial, histórico de navegação e filtros salvos na URL
   useEffect(() => {
@@ -77,11 +74,12 @@ export function MusicaList() {
         setSelectedMusicaId(null);
       }
 
-      // Restaura filtros da URL
+      // Restaura filtros e a Versão selecionada da URL
       const params = new URLSearchParams(window.location.search);
       setBusca(params.get("q") || "");
       setCategoria(params.get("cat") || "");
       setTempo(params.get("tempo") || "");
+      setSelectedVersaoId(params.get("versao"));
     };
 
     handleLocationChange();
@@ -123,26 +121,38 @@ export function MusicaList() {
   }, [selectedMusicaId]);
 
   const selectedMusica = useMemo(() => {
-    return musicas.find(m => m.id === selectedMusicaId) || null;
-  }, [musicas, selectedMusicaId]);
+    const musica = musicas.find(m => m.id === selectedMusicaId);
+    if (!musica) return null;
+    // Mesmo ponto único de resolução do ticket 1 — cai pra Principal sem
+    // versaoId, ou se o id não corresponder a nenhuma Versão existente.
+    const conteudo = resolverConteudoVersao(musica, selectedVersaoId ?? undefined);
+    return { ...musica, ...conteudo };
+  }, [musicas, selectedMusicaId, selectedVersaoId]);
 
-  const handleMusicaClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+  const handleMusicaClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string, versaoId?: string) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     setSelectedMusicaId(id);
-    
-    // Preserva parâmetros de busca ao navegar
-    const search = window.location.search;
-    window.history.pushState(null, "", `/musica/${id}${search}`);
+    setSelectedVersaoId(versaoId ?? null);
+
+    // Preserva parâmetros de busca ao navegar, refletindo a Versão escolhida
+    const params = new URLSearchParams(window.location.search);
+    if (versaoId) params.set("versao", versaoId);
+    else params.delete("versao");
+    const query = params.toString();
+    window.history.pushState(null, "", `/musica/${id}${query ? `?${query}` : ""}`);
   };
 
   const handleBackToList = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     setSelectedMusicaId(null);
-    
-    // Preserva parâmetros de busca ao retornar para a lista
-    const search = window.location.search;
-    window.history.pushState(null, "", `/${search}`);
+    setSelectedVersaoId(null);
+
+    // Preserva parâmetros de busca ao retornar para a lista, descartando a Versão
+    const params = new URLSearchParams(window.location.search);
+    params.delete("versao");
+    const query = params.toString();
+    window.history.pushState(null, "", `/${query ? `?${query}` : ""}`);
   };
 
   useEffect(() => {
@@ -160,6 +170,7 @@ export function MusicaList() {
             id: doc.id,
             ...data,
             tablaturas: tablaturasDeFirestore(data.tablaturas),
+            versoes: data.versoes ? versoesDeFirestore(data.versoes) : undefined,
           } as Musica);
         });
         setMusicas(lista);
@@ -230,9 +241,19 @@ export function MusicaList() {
     return activeRepertorios.find(r => r.id === selectedRepTabId);
   }, [activeRepertorios, selectedRepTabId]);
 
-  const musicasDoDia = useMemo(() => {
+  // Cada item carrega o conteúdo já resolvido (Tom/letraCifra/tablaturas da
+  // Versão fixada pro repertório, ou da Principal quando nenhuma foi fixada
+  // — mesma resolução do ticket 1) e o id dessa Versão fixada, pra montar o
+  // link compartilhável de cada card.
+  const musicasDoDia = useMemo((): (Musica & { versaoFixadaId?: string })[] => {
     if (!selectedRepertorio || !selectedRepertorio.musicasIds) return [];
-    return selectedRepertorio.musicasIds.map(id => musicas.find(m => m.id === id)).filter(Boolean) as Musica[];
+    return selectedRepertorio.musicasIds.flatMap((id) => {
+      const musica = musicas.find((m) => m.id === id);
+      if (!musica) return [];
+      const versaoFixadaId = selectedRepertorio.versoesFixadas?.[id];
+      const conteudo = resolverConteudoVersao(musica, versaoFixadaId);
+      return [{ ...musica, ...conteudo, versaoFixadaId }];
+    });
   }, [selectedRepertorio, musicas]);
 
   // Ignoramos o "tempo" como filtro que esconde o repertório, pois ele é setado automaticamente pela API
@@ -274,7 +295,10 @@ export function MusicaList() {
             &larr; Voltar para a lista
           </button>
 
-          <CifraViewer musica={selectedMusica} />
+          {/* `key` força remontar ao trocar de Versão/Música: o Tom
+              transposto ao vivo (estado interno do CifraViewer) é sempre
+              relativo à Versão atual exibida. */}
+          <CifraViewer key={`${selectedMusica.id}:${selectedVersaoId ?? ""}`} musica={selectedMusica} />
         </div>
       </main>
     );
@@ -382,9 +406,9 @@ export function MusicaList() {
           {musicasDoDia.length > 0 ? (
             <div className="grid gap-4 border-l-4 border-primary-500 pl-4 py-2">
               {musicasDoDia.map((musica, index) => (
-                <Link 
-                  href={`/musica/${musica.id}`} 
-                  onClick={(e) => handleMusicaClick(e, musica.id)}
+                <Link
+                  href={`/musica/${musica.id}${musica.versaoFixadaId ? `?versao=${musica.versaoFixadaId}` : ""}`}
+                  onClick={(e) => handleMusicaClick(e, musica.id, musica.versaoFixadaId)}
                   key={`rep-${musica.id}-${index}`}
                   className="block bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group relative"
                 >
