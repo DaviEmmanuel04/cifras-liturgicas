@@ -67,3 +67,14 @@ export type SecaoTablatura = {
  * (TablaturaEditor) e a exibição pro visitante (TablaturaViewer).
  */
 export const CORDAS_TABLATURA = ["E", "A", "D", "G", "B", "e"] as const;
+
+/**
+ * Índices de CORDAS_TABLATURA na ordem de exibição em tela/impressão: agudo
+ * (e) no topo, grave (E) na base — convenção padrão de tablatura, inversa à
+ * ordem de armazenamento acima (que vai do grave ao agudo). Só a ordem das
+ * linhas na tela inverte; o índice de corda salvo em cada Nota não muda.
+ * Compartilhado entre TablaturaViewer e TablaturaEditor pra manter a mesma
+ * ordem visual nos dois — o admin cadastra vendo a mesma ordem que será
+ * exibida publicamente.
+ */
+export const ORDEM_EXIBICAO_TABLATURA: readonly number[] = [...CORDAS_TABLATURA.keys()].reverse();

@@ -3,7 +3,7 @@
 import { Plus, Trash2, X } from "lucide-react";
 import { generateId } from "@/utils/cifraParser";
 import { parseNota, simboloNota } from "@/utils/execucaoTablatura";
-import { CORDAS_TABLATURA, type Passo, type SecaoTablatura } from "@/types/tablatura";
+import { CORDAS_TABLATURA, ORDEM_EXIBICAO_TABLATURA, type Passo, type SecaoTablatura } from "@/types/tablatura";
 
 type TablaturaEditorProps = {
   secoes: SecaoTablatura[];
@@ -58,6 +58,13 @@ export function TablaturaEditor({ secoes, onChange, tom }: TablaturaEditorProps)
         </button>
       </div>
 
+      <p className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 leading-relaxed">
+        <span className="font-sans font-semibold text-gray-600">Como digitar: </span>
+        <span className="font-mono">x</span> = abafada · <span className="font-mono">5h</span> /{" "}
+        <span className="font-mono">5p</span> = ligadura · <span className="font-mono">5/</span> /{" "}
+        <span className="font-mono">5\</span> = slide · <span className="font-mono">5~</span> = vibrato
+      </p>
+
       {secoes.length === 0 && (
         <p className="text-sm text-gray-400 italic py-2">Nenhuma Seção de Tablatura cadastrada.</p>
       )}
@@ -89,6 +96,12 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
 
   function adicionarPasso() {
     onChange({ ...secao, passos: [...secao.passos, []] });
+  }
+
+  function inserirPassoAntes(passoIdx: number) {
+    const passos = [...secao.passos];
+    passos.splice(passoIdx, 0, []);
+    onChange({ ...secao, passos });
   }
 
   function removerPasso(passoIdx: number) {
@@ -144,9 +157,11 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
         <div className="overflow-x-auto">
           <table className="border-collapse text-xs">
             <tbody>
-              {CORDAS_TABLATURA.map((label, cordaIdx) => (
+              {ORDEM_EXIBICAO_TABLATURA.map((cordaIdx) => (
                 <tr key={cordaIdx}>
-                  <td className="pr-2 font-mono font-bold text-gray-500 text-center w-5">{label}</td>
+                  <td className="pr-2 font-mono font-bold text-gray-500 text-center w-5">
+                    {CORDAS_TABLATURA[cordaIdx]}
+                  </td>
                   {secao.passos.map((passo, passoIdx) => (
                     <td key={passoIdx} className="p-0.5">
                       <input
@@ -165,14 +180,24 @@ function SecaoTablaturaCard({ secao, onChange, onRemove }: SecaoTablaturaCardPro
                 <td />
                 {secao.passos.map((_, passoIdx) => (
                   <td key={passoIdx} className="pt-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removerPasso(passoIdx)}
-                      title="Remover passo"
-                      className="text-gray-400 hover:text-red-600 cursor-pointer"
-                    >
-                      <X size={12} />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => inserirPassoAntes(passoIdx)}
+                        title="Inserir passo antes"
+                        className="text-gray-400 hover:text-primary-600 cursor-pointer"
+                      >
+                        <Plus size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removerPasso(passoIdx)}
+                        title="Remover passo"
+                        className="text-gray-400 hover:text-red-600 cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   </td>
                 ))}
               </tr>

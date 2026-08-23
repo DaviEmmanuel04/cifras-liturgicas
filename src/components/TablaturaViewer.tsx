@@ -1,6 +1,6 @@
-import { CORDAS_TABLATURA, type SecaoTablatura } from "@/types/tablatura";
+import type { SecaoTablatura } from "@/types/tablatura";
 import { transporTablatura } from "@/utils/transposicaoTablatura";
-import { simboloNota } from "@/utils/execucaoTablatura";
+import { linhasSecao } from "@/utils/linhaTablatura";
 
 type TablaturaViewerProps = {
   secoes: SecaoTablatura[];
@@ -9,9 +9,11 @@ type TablaturaViewerProps = {
 
 /**
  * Exibição somente-leitura das Seções de Tablatura de uma Música, na ordem
- * cadastrada. Transpõe as casas de cada Seção pelo mesmo `semitons` que
- * `CifraViewer` usa pra transpor os acordes, reaproveitando o módulo puro
- * `transporTablatura` — nada fica pré-calculado/persistido transposto.
+ * cadastrada, no formato tradicional de tab (uma linha de texto por corda,
+ * agudo no topo — ver `linhasSecao`). Transpõe as casas de cada Seção pelo
+ * mesmo `semitons` que `CifraViewer` usa pra transpor os acordes,
+ * reaproveitando o módulo puro `transporTablatura` — nada fica
+ * pré-calculado/persistido transposto.
  */
 export function TablaturaViewer({ secoes, semitons }: TablaturaViewerProps) {
   return (
@@ -33,29 +35,9 @@ function SecaoTablaturaDisplay({ secao }: { secao: SecaoTablatura }) {
       {secao.passos.length === 0 ? (
         <p className="text-xs text-gray-400 italic">Nenhum passo cadastrado.</p>
       ) : (
-        <table className="border-collapse font-mono text-xs">
-          <tbody>
-            {CORDAS_TABLATURA.map((label, cordaIdx) => (
-              <tr key={cordaIdx}>
-                <td className="pr-2 font-bold text-gray-400 print:text-gray-600 text-center w-5 border-b border-gray-150">
-                  {label}
-                </td>
-                {secao.passos.map((passo, passoIdx) => {
-                  const nota = passo.find((n) => n.corda === cordaIdx);
-                  const passoSeguinte = secao.passos[passoIdx + 1];
-                  return (
-                    <td
-                      key={passoIdx}
-                      className="w-7 h-6 text-center border-b border-gray-150 text-gray-800 print:text-black"
-                    >
-                      {nota ? simboloNota(nota, passoSeguinte) : "—"}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <pre className="font-mono text-[13px] leading-[1.6] text-gray-800 print:text-black whitespace-pre overflow-x-auto">
+          {linhasSecao(secao).join("\n")}
+        </pre>
       )}
     </div>
   );
