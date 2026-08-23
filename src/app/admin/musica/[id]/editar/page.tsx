@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, use } from "react";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Save, Upload, X } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Save, Star, Trash2, Upload, X } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -15,6 +15,13 @@ import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestore";
 import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
+import {
+  atualizarVersao,
+  avaliarExclusaoVersao,
+  promoverVersaoPrincipal,
+  repertoriosComVersaoFixada,
+  type RepertorioComVersoesFixadas,
+} from "@/utils/gerenciarVersoes";
 import type { ConteudoVersao } from "@/utils/resolverVersao";
 import type { Versao } from "@/types/versao";
 
@@ -60,6 +67,9 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   // usado antes — nesse caso a ação de duplicar (que só cobre single→duas
   // Versões) fica escondida.
   const [versoesExistentes, setVersoesExistentes] = useState<Versao[]>([]);
+  // `id` da Versão marcada como Principal dentro de `versoesExistentes`. Só
+  // relevante quando a coleção existe (ver types/musica.ts).
+  const [versaoPrincipalId, setVersaoPrincipalId] = useState<string | undefined>(undefined);
   // Rastreia edição não salva pra bloquear "Duplicar Versão" enquanto há
   // pendência no formulário principal (duplicar sempre parte de conteúdo já
   // salvo, nunca de edição pendente).
@@ -70,6 +80,9 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const [modoNovaVersao, setModoNovaVersao] = useState(false);
   const [conteudoVersaoOriginal, setConteudoVersaoOriginal] = useState<ConteudoVersao | null>(null);
   const [criandoVersao, setCriandoVersao] = useState(false);
+  // Desabilita as ações de renomear/promover/apagar da lista de Versões
+  // enquanto uma delas está em andamento — evita disparos concorrentes.
+  const [processandoVersao, setProcessandoVersao] = useState(false);
 
   useEffect(() => {
     async function carregarMusica() {
@@ -97,6 +110,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             setTomTravado(data.tom || "");
           }
           setVersoesExistentes(versoesDeFirestore(data.versoes));
+          setVersaoPrincipalId(data.versaoPrincipalId || undefined);
         } else {
           alert("Música não encontrada.");
           router.push("/admin/dashboard");
@@ -179,14 +193,21 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     }, 0);
   };
 
+  /** `autor`/`agora` da operação atual — os dois valores de auditoria que toda escrita em Versão carrega junto. */
+  const autoriaAtual = () => ({
+    autor: auth.currentUser?.email || "Anônimo",
+    agora: new Date().toISOString()
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (modoNovaVersao) return; // salvar aqui é só via "Salvar como Nova Versão"
     setSaving(true);
 
     try {
-      const docRef = doc(db, "musicas", id);
-      await updateDoc(docRef, {
+      const { autor, agora } = autoriaAtual();
+
+      const payload: Record<string, unknown> = {
         titulo: formData.titulo,
         artista: formData.artista,
         categoria: formData.categoria,
@@ -194,10 +215,31 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         tom: formData.tom,
         letraCifra: formData.letraCifra,
         tablaturas: tablaturasParaFirestore(tablaturas),
-        atualizadoEm: new Date().toISOString(),
-        atualizadoPor: auth.currentUser?.email || "Anônimo"
-      });
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      };
 
+      // A partir do momento em que a coleção de Versões existe, o formulário
+      // normal continua editando "a Principal" diretamente — mas também
+      // precisa manter o registro dela dentro de `versoes` sincronizado,
+      // senão qualquer leitura por `versaoId` (a resolução pública, um
+      // Repertório) enxergaria conteúdo desatualizado. Ver ADR 0003.
+      let versoesAtualizadas = versoesExistentes;
+      if (versoesExistentes.length > 0 && versaoPrincipalId) {
+        versoesAtualizadas = atualizarVersao(
+          versoesExistentes,
+          versaoPrincipalId,
+          { tom: formData.tom, letraCifra: formData.letraCifra, tablaturas },
+          autor,
+          agora
+        );
+        payload.versoes = versoesParaFirestore(versoesAtualizadas);
+      }
+
+      const docRef = doc(db, "musicas", id);
+      await updateDoc(docRef, payload);
+
+      setVersoesExistentes(versoesAtualizadas);
       setSujo(false);
       router.push("/admin/dashboard");
     } catch (error) {
@@ -273,6 +315,104 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  /** Nomes dos repertórios que hoje fixam `versaoId` — usado pra bloquear a exclusão dessa Versão. */
+  const buscarRepertoriosComVersaoFixada = async (versaoId: string): Promise<string[]> => {
+    const snapshot = await getDocs(collection(db, "repertorios"));
+    const repertorios = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() }) as RepertorioComVersoesFixadas
+    );
+    return repertoriosComVersaoFixada(repertorios, versaoId);
+  };
+
+  const handleRenomearVersao = async (versaoId: string, rotuloAtual: string) => {
+    const novoRotulo = prompt("Novo rótulo da Versão:", rotuloAtual)?.trim();
+    if (!novoRotulo || novoRotulo === rotuloAtual) return;
+
+    setProcessandoVersao(true);
+    try {
+      const { autor, agora } = autoriaAtual();
+      const atualizadas = atualizarVersao(versoesExistentes, versaoId, { rotulo: novoRotulo }, autor, agora);
+
+      await updateDoc(doc(db, "musicas", id), {
+        versoes: versoesParaFirestore(atualizadas),
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      });
+
+      setVersoesExistentes(atualizadas);
+    } catch (error) {
+      console.error("Erro ao renomear Versão:", error);
+      alert("Erro ao renomear a Versão. Tente novamente.");
+    } finally {
+      setProcessandoVersao(false);
+    }
+  };
+
+  const handlePromoverVersao = async (versaoId: string) => {
+    if (!confirm("Promover esta Versão a Principal? O conteúdo dela passa a ser o exibido por padrão.")) return;
+
+    setProcessandoVersao(true);
+    try {
+      const conteudo = promoverVersaoPrincipal(versoesExistentes, versaoId);
+      const { autor, agora } = autoriaAtual();
+
+      await updateDoc(doc(db, "musicas", id), {
+        versaoPrincipalId: versaoId,
+        tom: conteudo.tom,
+        letraCifra: conteudo.letraCifra,
+        tablaturas: tablaturasParaFirestore(conteudo.tablaturas ?? []),
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      });
+
+      setVersaoPrincipalId(versaoId);
+      // O formulário normal edita "a Principal" diretamente — precisa
+      // refletir o conteúdo recém-promovido, senão a próxima edição salva
+      // pisaria nele com o que estava no formulário antes da troca.
+      setFormData((prev) => ({ ...prev, tom: conteudo.tom, letraCifra: conteudo.letraCifra }));
+      const novasTablaturas = conteudo.tablaturas ?? [];
+      setTablaturas(novasTablaturas);
+      setTomTravado(novasTablaturas.length > 0 ? conteudo.tom : "");
+      setSujo(false);
+    } catch (error) {
+      console.error("Erro ao promover Versão:", error);
+      alert("Erro ao promover a Versão. Tente novamente.");
+    } finally {
+      setProcessandoVersao(false);
+    }
+  };
+
+  const handleApagarVersao = async (versaoId: string, rotulo: string) => {
+    setProcessandoVersao(true);
+    try {
+      const repertorios = await buscarRepertoriosComVersaoFixada(versaoId);
+      const avaliacao = avaliarExclusaoVersao(versaoPrincipalId, versaoId, versoesExistentes.length, repertorios);
+
+      if (!avaliacao.permitido) {
+        alert(avaliacao.motivo);
+        return;
+      }
+
+      if (!confirm(`Apagar a Versão "${rotulo}"? Esta ação não pode ser desfeita.`)) return;
+
+      const restantes = versoesExistentes.filter((versao) => versao.id !== versaoId);
+      const { autor, agora } = autoriaAtual();
+
+      await updateDoc(doc(db, "musicas", id), {
+        versoes: versoesParaFirestore(restantes),
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      });
+
+      setVersoesExistentes(restantes);
+    } catch (error) {
+      console.error("Erro ao apagar Versão:", error);
+      alert("Erro ao apagar a Versão. Tente novamente.");
+    } finally {
+      setProcessandoVersao(false);
+    }
+  };
+
   // Heurística visual simples para acordes com notação inválida
   const acordesInvalidos = useMemo(() => {
     const regexAcordes = /\[(.*?)\]/g;
@@ -343,6 +483,72 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             <Copy size={15} />
             Duplicar Versão
           </button>
+        </div>
+      )}
+
+      {versoesExistentes.length > 0 && !modoNovaVersao && (
+        <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm">
+          <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
+          <p className="text-xs text-gray-500 mt-0.5 mb-3">
+            Cada Versão tem seu próprio Tom, Cifra e Tablatura. A Principal é a exibida por padrão pra quem visita a Música.
+          </p>
+          {sujo && (
+            <p className="text-xs text-amber-700 mb-3">Salve as alterações pendentes antes de promover uma Versão a Principal.</p>
+          )}
+          <ul className="space-y-2">
+            {versoesExistentes.map((versao) => {
+              const principal = versao.id === versaoPrincipalId;
+              return (
+                <li
+                  key={versao.id}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-[#e4ded0] bg-[#fbf9f4]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800 truncate">{versao.rotulo}</span>
+                      {principal && (
+                        <span className="shrink-0 bg-primary-50 text-primary-700 border border-primary-200 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">Tom: {versao.tom}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRenomearVersao(versao.id, versao.rotulo)}
+                      disabled={processandoVersao}
+                      title="Renomear Versão"
+                      className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    {!principal && (
+                      <button
+                        type="button"
+                        onClick={() => handlePromoverVersao(versao.id)}
+                        disabled={processandoVersao || sujo}
+                        title="Promover a Principal"
+                        className="p-1.5 text-gray-500 hover:text-primary-700 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Star size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleApagarVersao(versao.id, versao.rotulo)}
+                      disabled={processandoVersao}
+                      title="Apagar Versão"
+                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
