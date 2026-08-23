@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Minus, Pencil, Plus, RotateCcw, Save, Star, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Copy, Layers, Minus, Pencil, Plus, RotateCcw, Save, Star, Trash2, Upload, X } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -72,6 +72,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   // `id` da Versão marcada como Principal dentro de `versoesExistentes`. Só
   // relevante quando a coleção existe (ver types/musica.ts).
   const [versaoPrincipalId, setVersaoPrincipalId] = useState<string | undefined>(undefined);
+  // `id` da Versão cujo conteúdo está carregado em `formData`/`tablaturas`
+  // agora — o formulário sempre edita esta Versão, e Salvar sempre grava
+  // nela. Espelha `versaoPrincipalId` ao carregar a Música e após promover;
+  // trocar no seletor "Editando" muda só este estado, sem tocar em qual é a
+  // Principal. `undefined` enquanto `versoesExistentes` está vazio — aí o
+  // formulário edita os campos de topo da Música diretamente, como sempre.
+  const [versaoEmEdicaoId, setVersaoEmEdicaoId] = useState<string | undefined>(undefined);
   // Rastreia edição não salva pra bloquear "Duplicar Versão" enquanto há
   // pendência no formulário principal (duplicar sempre parte de conteúdo já
   // salvo, nunca de edição pendente).
@@ -116,8 +123,14 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           if (secoesCarregadas.length > 0) {
             setTomTravado(data.tom || "");
           }
-          setVersoesExistentes(versoesDeFirestore(data.versoes));
+          const versoesCarregadas = versoesDeFirestore(data.versoes);
+          setVersoesExistentes(versoesCarregadas);
           setVersaoPrincipalId(data.versaoPrincipalId || undefined);
+          setVersaoEmEdicaoId(
+            versoesCarregadas.length > 0
+              ? (versoesCarregadas.find((v) => v.id === data.versaoPrincipalId) ?? versoesCarregadas[0]).id
+              : undefined
+          );
         } else {
           alert("Música não encontrada.");
           router.push("/admin/dashboard");
@@ -219,23 +232,31 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         artista: formData.artista,
         categoria: formData.categoria,
         tempo: formData.tempo,
-        tom: formData.tom,
-        letraCifra: formData.letraCifra,
-        tablaturas: tablaturasParaFirestore(tablaturas),
         atualizadoEm: agora,
         atualizadoPor: autor
       };
 
-      // A partir do momento em que a coleção de Versões existe, o formulário
-      // normal continua editando "a Principal" diretamente — mas também
-      // precisa manter o registro dela dentro de `versoes` sincronizado,
-      // senão qualquer leitura por `versaoId` (a resolução pública, um
-      // Repertório) enxergaria conteúdo desatualizado. Ver ADR 0003.
+      // Título/Artista/Categoria/Tempo são sempre da Música, não importa qual
+      // Versão está carregada. Tom/Cifra/Tablatura, porém, pertencem à Versão
+      // selecionada no seletor "Editando" (`versaoEmEdicaoId`) — os campos de
+      // topo da Música só espelham a Principal (ADR 0003), então só mudam
+      // quando é ela que está sendo editada agora.
+      const editandoPrincipal = versoesExistentes.length === 0 || versaoEmEdicaoId === versaoPrincipalId;
+      if (editandoPrincipal) {
+        payload.tom = formData.tom;
+        payload.letraCifra = formData.letraCifra;
+        payload.tablaturas = tablaturasParaFirestore(tablaturas);
+      }
+
+      // A partir do momento em que a coleção de Versões existe, toda edição
+      // atualiza o registro correspondente dentro de `versoes` — senão
+      // qualquer leitura por `versaoId` (a resolução pública, um Repertório)
+      // enxergaria conteúdo desatualizado.
       let versoesAtualizadas = versoesExistentes;
-      if (versoesExistentes.length > 0 && versaoPrincipalId) {
+      if (versoesExistentes.length > 0 && versaoEmEdicaoId) {
         versoesAtualizadas = atualizarVersao(
           versoesExistentes,
-          versaoPrincipalId,
+          versaoEmEdicaoId,
           { tom: formData.tom, letraCifra: formData.letraCifra, tablaturas },
           autor,
           agora
@@ -450,6 +471,37 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  /**
+   * Substitui o Tom/Cifra/Tablatura no formulário por `conteudo`, mais o
+   * resto do estado que sempre acompanha essa troca (`tomTravado`, `sujo`,
+   * `previewSemitons`) — Título/Artista/Categoria/Tempo não fazem parte,
+   * são da Música, não de uma Versão. Reaproveitada por toda ação que muda
+   * qual conteúdo está carregado: trocar no seletor "Editando", e o
+   * fallback pra Principal quando a Versão aberta é apagada.
+   */
+  const carregarConteudoNoFormulario = (conteudo: ConteudoVersao) => {
+    setFormData((prev) => ({ ...prev, tom: conteudo.tom, letraCifra: conteudo.letraCifra }));
+    const novasTablaturas = conteudo.tablaturas ?? [];
+    setTablaturas(novasTablaturas);
+    setTomTravado(novasTablaturas.length > 0 ? conteudo.tom : "");
+    setSujo(false);
+    setPreviewSemitons(0);
+  };
+
+  /**
+   * Troca qual Versão está carregada no formulário — chamada pelo seletor
+   * "Editando" no topo da tela. Bloqueada enquanto há edição pendente
+   * (`sujo`), mesma regra de "Duplicar Versão"/"Promover a Principal" — ver
+   * o `disabled` do seletor.
+   */
+  const handleSelecionarVersaoParaEditar = (versaoId: string) => {
+    const versao = versoesExistentes.find((v) => v.id === versaoId);
+    if (!versao) return;
+
+    setVersaoEmEdicaoId(versao.id);
+    carregarConteudoNoFormulario(versao);
+  };
+
   /** Nomes dos repertórios que hoje fixam `versaoId` — usado pra bloquear a exclusão dessa Versão. */
   const buscarRepertoriosComVersaoFixada = async (versaoId: string): Promise<string[]> => {
     const snapshot = await getDocs(collection(db, "repertorios"));
@@ -501,15 +553,12 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       });
 
       setVersaoPrincipalId(versaoId);
-      // O formulário normal edita "a Principal" diretamente — precisa
-      // refletir o conteúdo recém-promovido, senão a próxima edição salva
-      // pisaria nele com o que estava no formulário antes da troca.
-      setFormData((prev) => ({ ...prev, tom: conteudo.tom, letraCifra: conteudo.letraCifra }));
-      const novasTablaturas = conteudo.tablaturas ?? [];
-      setTablaturas(novasTablaturas);
-      setTomTravado(novasTablaturas.length > 0 ? conteudo.tom : "");
-      setSujo(false);
-      setPreviewSemitons(0);
+      // O formulário continua editando a Versão que estava aberta antes de
+      // promover (`versaoEmEdicaoId` não muda) — promover só troca qual é a
+      // Principal, sem sequestrar o que o admin está editando no momento.
+      // `handleSubmit` já decide sozinho, via `editandoPrincipal`, se uma
+      // próxima edição salva mexe nos campos de topo da Música ou só dentro
+      // de `versoes` — não depende de `formData` refletir a Principal aqui.
     } catch (error) {
       console.error("Erro ao promover Versão:", error);
       alert("Erro ao promover a Versão. Tente novamente.");
@@ -541,6 +590,20 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       });
 
       setVersoesExistentes(restantes);
+
+      if (restantes.length === 0) {
+        // Coleção esvaziou — volta pro modo implícito de versão única; o
+        // formulário já mostra o conteúdo certo (o da própria Versão
+        // restante), só o rótulo de "qual Versão" deixa de fazer sentido.
+        setVersaoEmEdicaoId(undefined);
+      } else if (versaoEmEdicaoId === versaoId) {
+        // A Versão apagada era a que estava aberta no formulário — devolve a
+        // edição pra Principal em vez de deixar o formulário apontando pra
+        // uma Versão que não existe mais.
+        const principal = restantes.find((v) => v.id === versaoPrincipalId) ?? restantes[0];
+        setVersaoEmEdicaoId(principal.id);
+        carregarConteudoNoFormulario(principal);
+      }
     } catch (error) {
       console.error("Erro ao apagar Versão:", error);
       alert("Erro ao apagar a Versão. Tente novamente.");
@@ -612,6 +675,33 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
+      {versoesExistentes.length > 0 && !modoNovaVersao && (
+        <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Layers size={16} className="text-gray-400 shrink-0" />
+            <label htmlFor="versao-em-edicao" className="text-sm font-medium text-gray-700 shrink-0">
+              Editando:
+            </label>
+            <select
+              id="versao-em-edicao"
+              value={versaoEmEdicaoId ?? ""}
+              onChange={(e) => handleSelecionarVersaoParaEditar(e.target.value)}
+              disabled={sujo}
+              title={sujo ? "Salve as alterações pendentes antes de trocar de Versão" : undefined}
+              className="p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed max-w-[240px] truncate cursor-pointer"
+            >
+              {versoesExistentes.map((versao) => (
+                <option key={versao.id} value={versao.id}>
+                  {versao.rotulo}
+                  {versao.id === versaoPrincipalId ? " (Principal)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          {sujo && <p className="text-xs text-amber-700">Salve as alterações pendentes antes de trocar de Versão.</p>}
+        </div>
+      )}
+
       {podeCriarSegundaVersao && (
         <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm flex items-center justify-between gap-4">
           <div>
@@ -641,7 +731,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             <div>
               <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Cada Versão tem seu próprio Tom, Cifra e Tablatura. A Principal é a exibida por padrão pra quem visita a Música.
+                Cada Versão tem seu próprio Tom, Cifra e Tablatura. A Principal é a exibida por padrão pra quem visita a Música. Use o seletor &ldquo;Editando&rdquo; acima pra editar o conteúdo de qualquer uma.
               </p>
             </div>
             <button
@@ -673,6 +763,11 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                           Principal
                         </span>
                       )}
+                      {versao.id === versaoEmEdicaoId && (
+                        <span className="shrink-0 bg-gray-100 text-gray-600 border border-gray-250 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
+                          Editando
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-500 font-mono">Tom: {versao.tom}</span>
                   </div>
@@ -700,8 +795,18 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                     <button
                       type="button"
                       onClick={() => handleApagarVersao(versao.id, versao.rotulo)}
-                      disabled={processandoVersao}
-                      title="Apagar Versão"
+                      // Apagar a própria Versão aberta no formulário descarta
+                      // o conteúdo carregado nela (handleApagarVersao devolve
+                      // a edição pra Principal) — bloqueia só esse caso
+                      // enquanto há edição pendente, pra não perder trabalho
+                      // sem aviso; apagar uma Versão não-aberta não mexe no
+                      // formulário, então não precisa dessa trava.
+                      disabled={processandoVersao || (sujo && versao.id === versaoEmEdicaoId)}
+                      title={
+                        sujo && versao.id === versaoEmEdicaoId
+                          ? "Salve ou descarte as alterações pendentes antes de apagar a Versão aberta no formulário"
+                          : "Apagar Versão"
+                      }
                       className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
                     >
                       <Trash2 size={14} />
