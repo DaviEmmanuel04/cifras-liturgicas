@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverConteudoVersao } from "./resolverVersao";
+import { resolverConteudoVersao, resolverVersaoIdEfetivo } from "./resolverVersao";
 import type { Musica } from "@/types/musica";
 
 const musicaSemVersoes: Musica = {
@@ -69,5 +69,23 @@ describe("resolverConteudoVersao", () => {
       letraCifra: "[C] Completa",
       tablaturas: undefined,
     });
+  });
+});
+
+describe("resolverVersaoIdEfetivo", () => {
+  it("sem coleção de Versões: retorna undefined — não há id de Versão a destacar", () => {
+    expect(resolverVersaoIdEfetivo(musicaSemVersoes)).toBeUndefined();
+  });
+
+  it("com coleção de Versões, sem versaoId: retorna o id da Principal", () => {
+    expect(resolverVersaoIdEfetivo(musicaComVersoes)).toBe("v1");
+  });
+
+  it("com versaoId de uma Versão existente: retorna esse id", () => {
+    expect(resolverVersaoIdEfetivo(musicaComVersoes, "v2")).toBe("v2");
+  });
+
+  it("com versaoId que não existe mais: retorna o id da Principal", () => {
+    expect(resolverVersaoIdEfetivo(musicaComVersoes, "v-apagada")).toBe("v1");
   });
 });

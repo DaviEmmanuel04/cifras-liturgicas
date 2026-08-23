@@ -23,16 +23,30 @@ export type ConteudoVersao = Pick<Versao, "tom" | "letraCifra" | "tablaturas">;
  *
  * Pura — não depende de Firestore nem de UI.
  */
-export function resolverConteudoVersao(musica: Musica, versaoId?: string): ConteudoVersao {
+function resolverVersaoEfetiva(musica: Musica, versaoId?: string): Versao | undefined {
   const versoes = musica.versoes;
-
-  if (!versoes || versoes.length === 0) {
-    return { tom: musica.tom, letraCifra: musica.letraCifra, tablaturas: musica.tablaturas };
-  }
+  if (!versoes || versoes.length === 0) return undefined;
 
   const versaoSelecionada = versaoId ? versoes.find((versao) => versao.id === versaoId) : undefined;
   const versaoPrincipal = versoes.find((versao) => versao.id === musica.versaoPrincipalId) ?? versoes[0];
-  const versao = versaoSelecionada ?? versaoPrincipal;
+  return versaoSelecionada ?? versaoPrincipal;
+}
+
+export function resolverConteudoVersao(musica: Musica, versaoId?: string): ConteudoVersao {
+  const versao = resolverVersaoEfetiva(musica, versaoId);
+  if (!versao) {
+    return { tom: musica.tom, letraCifra: musica.letraCifra, tablaturas: musica.tablaturas };
+  }
 
   return { tom: versao.tom, letraCifra: versao.letraCifra, tablaturas: versao.tablaturas };
+}
+
+/**
+ * Id da Versão que `resolverConteudoVersao` efetivamente usaria — pra UI que
+ * precisa saber qual destacar (ex. o seletor público), sem duplicar a lógica
+ * de fallback. `undefined` quando a coleção `versoes` não existe, já que aí
+ * não há id de Versão nenhum a destacar.
+ */
+export function resolverVersaoIdEfetivo(musica: Musica, versaoId?: string): string | undefined {
+  return resolverVersaoEfetiva(musica, versaoId)?.id;
 }
