@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Copy, Save, Upload, X } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -13,6 +13,13 @@ import { convertPdfAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
+import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestore";
+import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
+import type { ConteudoVersao } from "@/utils/resolverVersao";
+import type { Versao } from "@/types/versao";
+
+/** Sugestão inicial (editável) pro rótulo da Versão que já existia, ao criar a segunda Versão de uma Música. */
+const ROTULO_SUGERIDO_VERSAO_EXISTENTE = "Original";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -48,6 +55,22 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   // Tom as casas foram digitadas.
   const [tomTravado, setTomTravado] = useState("");
 
+  // Versões (ver CONTEXT.md, entradas "Versão" e "Versão Principal").
+  // `versoesExistentes` só é não-vazio numa Música em que este fluxo já foi
+  // usado antes — nesse caso a ação de duplicar (que só cobre single→duas
+  // Versões) fica escondida.
+  const [versoesExistentes, setVersoesExistentes] = useState<Versao[]>([]);
+  // Rastreia edição não salva pra bloquear "Duplicar Versão" enquanto há
+  // pendência no formulário principal (duplicar sempre parte de conteúdo já
+  // salvo, nunca de edição pendente).
+  const [sujo, setSujo] = useState(false);
+  // true enquanto o formulário está editando a cópia livre que vai virar a
+  // Versão nova — nesse modo, o Salvar normal fica desabilitado em favor de
+  // "Salvar como Nova Versão", que pede os dois rótulos antes de confirmar.
+  const [modoNovaVersao, setModoNovaVersao] = useState(false);
+  const [conteudoVersaoOriginal, setConteudoVersaoOriginal] = useState<ConteudoVersao | null>(null);
+  const [criandoVersao, setCriandoVersao] = useState(false);
+
   useEffect(() => {
     async function carregarMusica() {
       try {
@@ -73,6 +96,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           if (secoesCarregadas.length > 0) {
             setTomTravado(data.tom || "");
           }
+          setVersoesExistentes(versoesDeFirestore(data.versoes));
         } else {
           alert("Música não encontrada.");
           router.push("/admin/dashboard");
@@ -90,6 +114,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setSujo(true);
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +132,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           ...prev,
           letraCifra: result.text || ""
         }));
+        setSujo(true);
         setMostrarAvisoPdf(true);
       } else {
         alert("Erro na conversão: " + (result.error || "Formato desconhecido"));
@@ -127,6 +153,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       setTomTravado(formData.tom);
     }
     setTablaturas(novasSecoes);
+    setSujo(true);
   };
 
   const inserirColchetes = () => {
@@ -142,8 +169,9 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     const after = text.substring(end);
 
     const novoTexto = before + "[" + selected + "]" + after;
-    
+
     setFormData({ ...formData, letraCifra: novoTexto });
+    setSujo(true);
 
     setTimeout(() => {
       textarea.focus();
@@ -153,6 +181,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (modoNovaVersao) return; // salvar aqui é só via "Salvar como Nova Versão"
     setSaving(true);
 
     try {
@@ -169,12 +198,78 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         atualizadoPor: auth.currentUser?.email || "Anônimo"
       });
 
+      setSujo(false);
       router.push("/admin/dashboard");
     } catch (error) {
       console.error("Erro ao atualizar música:", error);
       alert("Erro ao salvar alterações. Tente novamente.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const conteudoVersaoDoFormulario = (): ConteudoVersao => ({
+    tom: formData.tom,
+    letraCifra: formData.letraCifra,
+    tablaturas
+  });
+
+  const iniciarDuplicacao = () => {
+    setConteudoVersaoOriginal(conteudoVersaoDoFormulario());
+    setModoNovaVersao(true);
+  };
+
+  const cancelarDuplicacao = () => {
+    if (!conteudoVersaoOriginal) return;
+    setFormData(prev => ({ ...prev, tom: conteudoVersaoOriginal.tom, letraCifra: conteudoVersaoOriginal.letraCifra }));
+    setTablaturas(conteudoVersaoOriginal.tablaturas ?? []);
+    setConteudoVersaoOriginal(null);
+    setModoNovaVersao(false);
+    setSujo(false);
+  };
+
+  const salvarComoNovaVersao = async () => {
+    if (!conteudoVersaoOriginal) return;
+
+    const rotuloVersaoNova = prompt("Rótulo da nova Versão:")?.trim();
+    if (!rotuloVersaoNova) return;
+
+    const rotuloVersaoExistente = prompt(
+      "Rótulo pra Versão que já existia:",
+      ROTULO_SUGERIDO_VERSAO_EXISTENTE
+    )?.trim();
+    if (!rotuloVersaoExistente) return;
+
+    setCriandoVersao(true);
+    try {
+      const autor = auth.currentUser?.email || "Anônimo";
+
+      const resultado = criarSegundaVersao({
+        conteudoAtual: conteudoVersaoOriginal,
+        conteudoNovo: conteudoVersaoDoFormulario(),
+        rotuloVersaoExistente,
+        rotuloVersaoNova,
+        autor,
+        agora: new Date().toISOString()
+      });
+
+      const docRef = doc(db, "musicas", id);
+      await updateDoc(docRef, {
+        tom: conteudoVersaoOriginal.tom,
+        letraCifra: conteudoVersaoOriginal.letraCifra,
+        tablaturas: tablaturasParaFirestore(conteudoVersaoOriginal.tablaturas ?? []),
+        versoes: versoesParaFirestore(resultado.versoes),
+        versaoPrincipalId: resultado.versaoPrincipalId,
+        atualizadoEm: new Date().toISOString(),
+        atualizadoPor: autor
+      });
+
+      router.push("/admin/dashboard");
+    } catch (error) {
+      console.error("Erro ao criar nova Versão:", error);
+      alert("Erro ao salvar a nova Versão. Tente novamente.");
+    } finally {
+      setCriandoVersao(false);
     }
   };
 
@@ -228,6 +323,49 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
+      {versoesExistentes.length === 0 && !modoNovaVersao && (
+        <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Duplique o conteúdo atual pra criar uma segunda Versão desta Música (ex. uma letra alternativa, ou uma versão simplificada).
+            </p>
+            {sujo && (
+              <p className="text-xs text-amber-700 mt-1">Salve as alterações pendentes antes de duplicar.</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={iniciarDuplicacao}
+            disabled={sujo}
+            className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Copy size={15} />
+            Duplicar Versão
+          </button>
+        </div>
+      )}
+
+      {modoNovaVersao && (
+        <div className="bg-primary-50 p-4 rounded-xl border border-primary-200 shadow-sm flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-sm font-bold text-primary-900">Editando uma cópia</h2>
+            <p className="text-xs text-primary-700 mt-0.5">
+              Tom, Cifra e Tablatura abaixo vão virar uma nova Versão — Título, Artista, Categoria e Tempo Litúrgico são da Música e continuam bloqueados aqui. A Versão atual só muda quando você confirmar.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={cancelarDuplicacao}
+            disabled={criandoVersao}
+            className="shrink-0 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 border border-gray-300 cursor-pointer"
+          >
+            <X size={15} />
+            Cancelar Cópia
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border border-[#e4ded0] shadow-sm space-y-4">
@@ -240,7 +378,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 required
                 value={formData.titulo}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={modoNovaVersao}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -251,7 +390,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 name="artista"
                 value={formData.artista}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={modoNovaVersao}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -262,7 +402,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 required
                 value={formData.categoria}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={modoNovaVersao}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="" disabled>Selecione uma categoria</option>
                 {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -276,7 +417,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 required
                 value={formData.tempo}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={modoNovaVersao}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="" disabled>Selecione um tempo</option>
                 {tempos.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -334,7 +476,10 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
               <InteractiveCifraEditor
                 value={formData.letraCifra}
-                onChange={(newVal) => setFormData(prev => ({ ...prev, letraCifra: newVal }))}
+                onChange={(newVal) => {
+                  setFormData(prev => ({ ...prev, letraCifra: newVal }));
+                  setSujo(true);
+                }}
                 tom={formData.tom}
                 textareaRef={textareaRef}
                 extraHeaderActions={
@@ -373,14 +518,26 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="flex justify-end pt-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Save size={18} />
-              <span>{saving ? "Salvando..." : "Salvar Alterações"}</span>
-            </button>
+            {modoNovaVersao ? (
+              <button
+                type="button"
+                onClick={salvarComoNovaVersao}
+                disabled={criandoVersao}
+                className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Save size={18} />
+                <span>{criandoVersao ? "Salvando..." : "Salvar como Nova Versão"}</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Save size={18} />
+                <span>{saving ? "Salvando..." : "Salvar Alterações"}</span>
+              </button>
+            )}
           </div>
         </form>
 
