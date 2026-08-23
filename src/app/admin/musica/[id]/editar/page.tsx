@@ -334,16 +334,54 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     });
   };
 
+  /**
+   * Confirma a cópia editada em `modoNovaVersao` como Versão nova. Quando é
+   * a segunda Versão da Música, reaproveita o fluxo de dois rótulos do
+   * ticket 2 ([[criarSegundaVersao]]) e leva de volta ao dashboard; daí em
+   * diante, [[adicionarVersao]] só pede o rótulo da cópia — as demais já têm
+   * o seu — e o formulário volta a mostrar a Versão que estava sendo
+   * editada antes de duplicar, igual a `cancelarDuplicacao`.
+   */
   const salvarComoNovaVersao = async () => {
     if (!conteudoVersaoOriginal) return;
 
-    const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão:");
-    if (!rotulos) return;
+    if (versoesExistentes.length === 0) {
+      const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão:");
+      if (!rotulos) return;
+
+      setCriandoVersao(true);
+      try {
+        await persistirSegundaVersao(conteudoVersaoOriginal, conteudoVersaoDoFormulario(), rotulos);
+        router.push("/admin/dashboard");
+      } catch (error) {
+        console.error("Erro ao criar nova Versão:", error);
+        alert("Erro ao salvar a nova Versão. Tente novamente.");
+      } finally {
+        setCriandoVersao(false);
+      }
+      return;
+    }
+
+    const rotulo = prompt("Rótulo da nova Versão:")?.trim();
+    if (!rotulo) return;
 
     setCriandoVersao(true);
     try {
-      await persistirSegundaVersao(conteudoVersaoOriginal, conteudoVersaoDoFormulario(), rotulos);
-      router.push("/admin/dashboard");
+      const { autor, agora } = autoriaAtual();
+      const atualizadas = adicionarVersao(versoesExistentes, conteudoVersaoDoFormulario(), rotulo, autor, agora);
+
+      await updateDoc(doc(db, "musicas", id), {
+        versoes: versoesParaFirestore(atualizadas),
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      });
+
+      setVersoesExistentes(atualizadas);
+      setFormData(prev => ({ ...prev, tom: conteudoVersaoOriginal.tom, letraCifra: conteudoVersaoOriginal.letraCifra }));
+      setTablaturas(conteudoVersaoOriginal.tablaturas ?? []);
+      setConteudoVersaoOriginal(null);
+      setModoNovaVersao(false);
+      setSujo(false);
     } catch (error) {
       console.error("Erro ao criar nova Versão:", error);
       alert("Erro ao salvar a nova Versão. Tente novamente.");
@@ -599,12 +637,25 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
       {versoesExistentes.length > 0 && !modoNovaVersao && (
         <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm">
-          <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
-          <p className="text-xs text-gray-500 mt-0.5 mb-3">
-            Cada Versão tem seu próprio Tom, Cifra e Tablatura. A Principal é a exibida por padrão pra quem visita a Música.
-          </p>
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Cada Versão tem seu próprio Tom, Cifra e Tablatura. A Principal é a exibida por padrão pra quem visita a Música.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={iniciarDuplicacao}
+              disabled={sujo}
+              className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Copy size={15} />
+              Duplicar Versão
+            </button>
+          </div>
           {sujo && (
-            <p className="text-xs text-amber-700 mb-3">Salve as alterações pendentes antes de promover uma Versão a Principal.</p>
+            <p className="text-xs text-amber-700 mb-3">Salve as alterações pendentes antes de duplicar ou promover uma Versão a Principal.</p>
           )}
           <ul className="space-y-2">
             {versoesExistentes.map((versao) => {
