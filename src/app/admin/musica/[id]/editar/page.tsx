@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Pencil, Save, Star, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Copy, Minus, Pencil, Plus, RotateCcw, Save, Star, Trash2, Upload, X } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -15,6 +15,7 @@ import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestore";
 import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
+import { opcoesTransposicao, transporAcorde, transporCifra } from "@/utils/transposicao";
 import {
   atualizarVersao,
   avaliarExclusaoVersao,
@@ -80,6 +81,11 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const [modoNovaVersao, setModoNovaVersao] = useState(false);
   const [conteudoVersaoOriginal, setConteudoVersaoOriginal] = useState<ConteudoVersao | null>(null);
   const [criandoVersao, setCriandoVersao] = useState(false);
+  // Semitons aplicados só ao preview (mesmos controles da visualização
+  // pública) — não altera formData; "Salvar Tom Transposto como Nova Versão"
+  // é o único jeito de persistir o resultado.
+  const [previewSemitons, setPreviewSemitons] = useState(0);
+  const [salvandoVersaoTransposta, setSalvandoVersaoTransposta] = useState(false);
   // Desabilita as ações de renomear/promover/apagar da lista de Versões
   // enquanto uma delas está em andamento — evita disparos concorrentes.
   const [processandoVersao, setProcessandoVersao] = useState(false);
@@ -259,6 +265,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const iniciarDuplicacao = () => {
     setConteudoVersaoOriginal(conteudoVersaoDoFormulario());
     setModoNovaVersao(true);
+    setPreviewSemitons(0);
   };
 
   const cancelarDuplicacao = () => {
@@ -268,50 +275,113 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     setConteudoVersaoOriginal(null);
     setModoNovaVersao(false);
     setSujo(false);
+    setPreviewSemitons(0);
   };
 
-  const salvarComoNovaVersao = async () => {
-    if (!conteudoVersaoOriginal) return;
-
-    const rotuloVersaoNova = prompt("Rótulo da nova Versão:")?.trim();
-    if (!rotuloVersaoNova) return;
+  /**
+   * Pede os dois rótulos exigidos por [[criarSegundaVersao]] — o da Versão
+   * nova (`mensagemRotuloNovo` ajusta o texto do prompt conforme a origem:
+   * cópia livre ou transposição) e, com sugestão pronta, o da Versão que já
+   * existia. `null` se o admin cancelar/deixar vazio qualquer um dos dois.
+   */
+  const pedirRotulosNovaVersao = (mensagemRotuloNovo: string): { rotuloVersaoNova: string; rotuloVersaoExistente: string } | null => {
+    const rotuloVersaoNova = prompt(mensagemRotuloNovo)?.trim();
+    if (!rotuloVersaoNova) return null;
 
     const rotuloVersaoExistente = prompt(
       "Rótulo pra Versão que já existia:",
       ROTULO_SUGERIDO_VERSAO_EXISTENTE
     )?.trim();
-    if (!rotuloVersaoExistente) return;
+    if (!rotuloVersaoExistente) return null;
+
+    return { rotuloVersaoNova, rotuloVersaoExistente };
+  };
+
+  /**
+   * Transforma a Música de Versão única em duas ([[criarSegundaVersao]]) e
+   * grava: `conteudoAtual` vira a Versão Principal (espelhada nos campos de
+   * topo, como hoje), `conteudoNovo` vira a segunda Versão. Reaproveitada
+   * tanto por "Duplicar Versão" (cópia editada livremente) quanto por
+   * "Salvar Tom Transposto" (conteúdo gerado por [[transporCifra]]) — as
+   * duas origens de uma Versão nova descritas no spec.
+   */
+  const persistirSegundaVersao = async (
+    conteudoAtual: ConteudoVersao,
+    conteudoNovo: ConteudoVersao,
+    rotulos: { rotuloVersaoNova: string; rotuloVersaoExistente: string }
+  ) => {
+    const { autor, agora } = autoriaAtual();
+
+    const resultado = criarSegundaVersao({
+      conteudoAtual,
+      conteudoNovo,
+      rotuloVersaoExistente: rotulos.rotuloVersaoExistente,
+      rotuloVersaoNova: rotulos.rotuloVersaoNova,
+      autor,
+      agora
+    });
+
+    const docRef = doc(db, "musicas", id);
+    await updateDoc(docRef, {
+      tom: conteudoAtual.tom,
+      letraCifra: conteudoAtual.letraCifra,
+      tablaturas: tablaturasParaFirestore(conteudoAtual.tablaturas ?? []),
+      versoes: versoesParaFirestore(resultado.versoes),
+      versaoPrincipalId: resultado.versaoPrincipalId,
+      atualizadoEm: agora,
+      atualizadoPor: autor
+    });
+  };
+
+  const salvarComoNovaVersao = async () => {
+    if (!conteudoVersaoOriginal) return;
+
+    const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão:");
+    if (!rotulos) return;
 
     setCriandoVersao(true);
     try {
-      const autor = auth.currentUser?.email || "Anônimo";
-
-      const resultado = criarSegundaVersao({
-        conteudoAtual: conteudoVersaoOriginal,
-        conteudoNovo: conteudoVersaoDoFormulario(),
-        rotuloVersaoExistente,
-        rotuloVersaoNova,
-        autor,
-        agora: new Date().toISOString()
-      });
-
-      const docRef = doc(db, "musicas", id);
-      await updateDoc(docRef, {
-        tom: conteudoVersaoOriginal.tom,
-        letraCifra: conteudoVersaoOriginal.letraCifra,
-        tablaturas: tablaturasParaFirestore(conteudoVersaoOriginal.tablaturas ?? []),
-        versoes: versoesParaFirestore(resultado.versoes),
-        versaoPrincipalId: resultado.versaoPrincipalId,
-        atualizadoEm: new Date().toISOString(),
-        atualizadoPor: autor
-      });
-
+      await persistirSegundaVersao(conteudoVersaoOriginal, conteudoVersaoDoFormulario(), rotulos);
       router.push("/admin/dashboard");
     } catch (error) {
       console.error("Erro ao criar nova Versão:", error);
       alert("Erro ao salvar a nova Versão. Tente novamente.");
     } finally {
       setCriandoVersao(false);
+    }
+  };
+
+  /**
+   * Salva o resultado do preview transposto (`previewSemitons`) como a
+   * segunda Versão da Música — mesmo fluxo de nomeação de
+   * `salvarComoNovaVersao`/[[criarSegundaVersao]]: a Versão que já existia
+   * (conteúdo atual do formulário, intocado) continua a Principal, e a nova
+   * Versão nasce com a Cifra reescrita no Tom transposto ([[transporCifra]])
+   * e a Tablatura copiada sem nenhuma alteração de casa. Só disponível antes
+   * de uma segunda Versão existir — mesma restrição de "Duplicar Versão".
+   */
+  const salvarComoVersaoTransposta = async () => {
+    if (previewSemitons === 0) return;
+
+    const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão (neste Tom transposto):");
+    if (!rotulos) return;
+
+    setSalvandoVersaoTransposta(true);
+    try {
+      const conteudoAtual = conteudoVersaoDoFormulario();
+      const conteudoTransposto: ConteudoVersao = {
+        tom: transporAcorde(conteudoAtual.tom, previewSemitons),
+        letraCifra: transporCifra(conteudoAtual.letraCifra, previewSemitons),
+        tablaturas: conteudoAtual.tablaturas
+      };
+
+      await persistirSegundaVersao(conteudoAtual, conteudoTransposto, rotulos);
+      router.push("/admin/dashboard");
+    } catch (error) {
+      console.error("Erro ao salvar a Versão transposta:", error);
+      alert("Erro ao salvar a nova Versão. Tente novamente.");
+    } finally {
+      setSalvandoVersaoTransposta(false);
     }
   };
 
@@ -374,6 +444,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       setTablaturas(novasTablaturas);
       setTomTravado(novasTablaturas.length > 0 ? conteudo.tom : "");
       setSujo(false);
+      setPreviewSemitons(0);
     } catch (error) {
       console.error("Erro ao promover Versão:", error);
       alert("Erro ao promover a Versão. Tente novamente.");
@@ -438,6 +509,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     return invalidos;
   }, [formData.letraCifra]);
 
+  const opcoesTomPreview = useMemo(() => opcoesTransposicao(formData.tom), [formData.tom]);
+  const tomPreviewAtual = transporAcorde(formData.tom, previewSemitons);
+  // As duas origens de uma Versão nova (Duplicar Versão, Salvar Tom
+  // Transposto) só estão disponíveis pra ir de uma Versão única pra duas —
+  // ver [[criarSegundaVersao]]. Reaproveitado por ambos os painéis abaixo.
+  const podeCriarSegundaVersao = versoesExistentes.length === 0 && !modoNovaVersao;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -463,7 +541,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      {versoesExistentes.length === 0 && !modoNovaVersao && (
+      {podeCriarSegundaVersao && (
         <div className="bg-white p-4 rounded-xl border border-[#e4ded0] shadow-sm flex items-center justify-between gap-4">
           <div>
             <h2 className="font-serif text-sm font-bold text-gray-900">Versões</h2>
@@ -766,11 +844,83 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 </span>
               )}
               {formData.tom && (
-                <span className="bg-primary-50 text-primary-700 px-2 py-1 rounded font-mono font-bold">Tom: {formData.tom}</span>
+                <span className="bg-primary-50 text-primary-700 px-2 py-1 rounded font-mono font-bold">Tom: {tomPreviewAtual}</span>
               )}
             </div>
+
+            {formData.tom && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#e4ded0]">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSemitons(s => s - 1)}
+                    title="Abaixar meio tom"
+                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Minus size={14} />
+                  </button>
+
+                  {opcoesTomPreview.length > 0 ? (
+                    <select
+                      value={previewSemitons}
+                      onChange={(e) => setPreviewSemitons(Number(e.target.value))}
+                      className="bg-gray-50 border border-gray-300 rounded-md font-mono font-bold text-xs py-1 px-1.5 outline-none cursor-pointer"
+                    >
+                      {opcoesTomPreview.map((opt) => (
+                        <option key={opt.semitons} value={opt.semitons}>{opt.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-mono font-bold text-gray-700 px-1.5">{tomPreviewAtual}</span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSemitons(s => s + 1)}
+                    title="Subir meio tom"
+                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Plus size={14} />
+                  </button>
+
+                  {previewSemitons !== 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSemitons(0)}
+                      title="Voltar para o Tom Original"
+                      className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {podeCriarSegundaVersao && (
+                  <button
+                    type="button"
+                    onClick={salvarComoVersaoTransposta}
+                    disabled={sujo || previewSemitons === 0 || salvandoVersaoTransposta}
+                    title={
+                      sujo
+                        ? "Salve as alterações pendentes antes"
+                        : previewSemitons === 0
+                          ? "Transponha o preview pra um Tom diferente antes de salvar"
+                          : "Salvar o resultado transposto como uma nova Versão"
+                    }
+                    className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save size={13} />
+                    {salvandoVersaoTransposta ? "Salvando..." : "Salvar Tom Transposto como Nova Versão"}
+                  </button>
+                )}
+              </div>
+            )}
+            {podeCriarSegundaVersao && sujo && (
+              <p className="text-[10px] text-amber-700 -mt-2">Salve as alterações pendentes antes de salvar como nova Versão.</p>
+            )}
+
             <div className="mt-4 p-4 bg-gray-50 rounded border border-[#e4ded0] overflow-x-auto">
-              <CifraRenderer texto={formData.letraCifra || "Nenhuma cifra inserida."} />
+              <CifraRenderer texto={formData.letraCifra || "Nenhuma cifra inserida."} semitons={previewSemitons} />
             </div>
           </div>
         </div>
