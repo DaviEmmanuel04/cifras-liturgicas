@@ -17,6 +17,7 @@ import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestor
 import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
 import { opcoesTransposicao, transporAcorde, transporCifra } from "@/utils/transposicao";
 import {
+  adicionarVersao,
   atualizarVersao,
   avaliarExclusaoVersao,
   promoverVersaoPrincipal,
@@ -352,31 +353,57 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   };
 
   /**
-   * Salva o resultado do preview transposto (`previewSemitons`) como a
-   * segunda Versão da Música — mesmo fluxo de nomeação de
-   * `salvarComoNovaVersao`/[[criarSegundaVersao]]: a Versão que já existia
-   * (conteúdo atual do formulário, intocado) continua a Principal, e a nova
-   * Versão nasce com a Cifra reescrita no Tom transposto ([[transporCifra]])
-   * e a Tablatura copiada sem nenhuma alteração de casa. Só disponível antes
-   * de uma segunda Versão existir — mesma restrição de "Duplicar Versão".
+   * Salva o resultado do preview transposto (`previewSemitons`) como uma
+   * Versão nova, com a Cifra reescrita no Tom transposto ([[transporCifra]])
+   * e a Tablatura copiada sem nenhuma alteração de casa — a Versão atual
+   * (conteúdo do formulário, intocado) não muda. Quando é a segunda Versão
+   * da Música, reaproveita o fluxo de nomeação de dois rótulos do ticket 2
+   * ([[criarSegundaVersao]]); daí em diante, [[adicionarVersao]] só pede o
+   * rótulo da Versão nova, já que as demais mantêm o que já tinham.
    */
   const salvarComoVersaoTransposta = async () => {
     if (previewSemitons === 0) return;
 
-    const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão (neste Tom transposto):");
-    if (!rotulos) return;
+    const conteudoAtual = conteudoVersaoDoFormulario();
+    const conteudoTransposto: ConteudoVersao = {
+      tom: transporAcorde(conteudoAtual.tom, previewSemitons),
+      letraCifra: transporCifra(conteudoAtual.letraCifra, previewSemitons),
+      tablaturas: conteudoAtual.tablaturas
+    };
+
+    if (versoesExistentes.length === 0) {
+      const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão (neste Tom transposto):");
+      if (!rotulos) return;
+
+      setSalvandoVersaoTransposta(true);
+      try {
+        await persistirSegundaVersao(conteudoAtual, conteudoTransposto, rotulos);
+        router.push("/admin/dashboard");
+      } catch (error) {
+        console.error("Erro ao salvar a Versão transposta:", error);
+        alert("Erro ao salvar a nova Versão. Tente novamente.");
+      } finally {
+        setSalvandoVersaoTransposta(false);
+      }
+      return;
+    }
+
+    const rotulo = prompt("Rótulo da nova Versão (neste Tom transposto):")?.trim();
+    if (!rotulo) return;
 
     setSalvandoVersaoTransposta(true);
     try {
-      const conteudoAtual = conteudoVersaoDoFormulario();
-      const conteudoTransposto: ConteudoVersao = {
-        tom: transporAcorde(conteudoAtual.tom, previewSemitons),
-        letraCifra: transporCifra(conteudoAtual.letraCifra, previewSemitons),
-        tablaturas: conteudoAtual.tablaturas
-      };
+      const { autor, agora } = autoriaAtual();
+      const atualizadas = adicionarVersao(versoesExistentes, conteudoTransposto, rotulo, autor, agora);
 
-      await persistirSegundaVersao(conteudoAtual, conteudoTransposto, rotulos);
-      router.push("/admin/dashboard");
+      await updateDoc(doc(db, "musicas", id), {
+        versoes: versoesParaFirestore(atualizadas),
+        atualizadoEm: agora,
+        atualizadoPor: autor
+      });
+
+      setVersoesExistentes(atualizadas);
+      setPreviewSemitons(0);
     } catch (error) {
       console.error("Erro ao salvar a Versão transposta:", error);
       alert("Erro ao salvar a nova Versão. Tente novamente.");
@@ -511,10 +538,16 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const opcoesTomPreview = useMemo(() => opcoesTransposicao(formData.tom), [formData.tom]);
   const tomPreviewAtual = transporAcorde(formData.tom, previewSemitons);
-  // As duas origens de uma Versão nova (Duplicar Versão, Salvar Tom
-  // Transposto) só estão disponíveis pra ir de uma Versão única pra duas —
-  // ver [[criarSegundaVersao]]. Reaproveitado por ambos os painéis abaixo.
+  // "Duplicar Versão" só cobre a transição de Versão única pra duas — ver
+  // [[criarSegundaVersao]]. Não há (ainda) um fluxo de duplicar pra uma
+  // terceira Versão em diante.
   const podeCriarSegundaVersao = versoesExistentes.length === 0 && !modoNovaVersao;
+  // "Salvar Tom Transposto", ao contrário, funciona em qualquer quantidade
+  // de Versões já existentes — [[salvarComoVersaoTransposta]] escolhe entre
+  // [[criarSegundaVersao]] (a primeira vez) e [[adicionarVersao]] (daí em
+  // diante). Só fica indisponível durante a edição de uma cópia livre
+  // (`modoNovaVersao`), que já é a própria forma de criar uma Versão nova.
+  const podeSalvarVersaoTransposta = !modoNovaVersao;
 
   if (loading) {
     return (
@@ -895,7 +928,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                   )}
                 </div>
 
-                {podeCriarSegundaVersao && (
+                {podeSalvarVersaoTransposta && (
                   <button
                     type="button"
                     onClick={salvarComoVersaoTransposta}
@@ -915,7 +948,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
             )}
-            {podeCriarSegundaVersao && sujo && (
+            {podeSalvarVersaoTransposta && sujo && (
               <p className="text-[10px] text-amber-700 -mt-2">Salve as alterações pendentes antes de salvar como nova Versão.</p>
             )}
 

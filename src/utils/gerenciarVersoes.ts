@@ -1,3 +1,4 @@
+import { generateId } from "@/utils/cifraParser";
 import type { Versao } from "@/types/versao";
 import type { ConteudoVersao } from "@/utils/resolverVersao";
 
@@ -70,6 +71,35 @@ export function avaliarExclusaoVersao(
   }
 
   return { permitido: true };
+}
+
+/**
+ * Acrescenta uma Versão nova (não-principal) a uma coleção que já tem duas
+ * ou mais Versões — a Principal não muda, e nenhuma Versão existente é
+ * tocada. Complementa [[criarSegundaVersao]], que cobre só a transição de
+ * Versão única pra duas (a única que pede rótulo pras duas ao mesmo tempo);
+ * daqui em diante, toda Versão nova (duplicada ou transposta) já tem uma
+ * Versão-irmã com rótulo próprio, então só precisa do rótulo dela mesma.
+ * Pura — não depende de Firestore nem de UI.
+ */
+export function adicionarVersao(
+  versoes: Versao[],
+  conteudoNovo: ConteudoVersao,
+  rotulo: string,
+  autor: string,
+  agora: string
+): Versao[] {
+  const versaoNova: Versao = {
+    id: generateId("versao"),
+    rotulo,
+    ...conteudoNovo,
+    criadoPor: autor,
+    criadoEm: agora,
+    modificadoPor: autor,
+    modificadoEm: agora,
+  };
+
+  return [...versoes, versaoNova];
 }
 
 /** Forma mínima de um Repertório relevante pra [[repertoriosComVersaoFixada]] — não o tipo completo do domínio. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { atualizarVersao, avaliarExclusaoVersao, promoverVersaoPrincipal, repertoriosComVersaoFixada } from "./gerenciarVersoes";
+import { adicionarVersao, atualizarVersao, avaliarExclusaoVersao, promoverVersaoPrincipal, repertoriosComVersaoFixada } from "./gerenciarVersoes";
 import type { Versao } from "@/types/versao";
 
 const versoes: Versao[] = [
@@ -78,6 +78,46 @@ describe("avaliarExclusaoVersao", () => {
 
   it("permite apagar a Principal quando é a única Versão restante — reverte a Música pro modo implícito de versão única", () => {
     expect(avaliarExclusaoVersao("v1", "v1", 1, [])).toEqual({ permitido: true });
+  });
+});
+
+describe("adicionarVersao", () => {
+  const conteudoNovo = { tom: "D", letraCifra: "[D] Tom do coral da manhã", tablaturas: undefined };
+
+  it("acrescenta uma Versão nova ao final da coleção, com o conteúdo e rótulo informados", () => {
+    const resultado = adicionarVersao(versoes, conteudoNovo, "Tom do Coral da Manhã", "regente@paroquia.org", "2026-08-23T12:00:00.000Z");
+
+    expect(resultado).toHaveLength(3);
+    expect(resultado[2]).toMatchObject({
+      rotulo: "Tom do Coral da Manhã",
+      tom: "D",
+      letraCifra: "[D] Tom do coral da manhã",
+    });
+  });
+
+  it("não altera as Versões já existentes", () => {
+    const resultado = adicionarVersao(versoes, conteudoNovo, "Tom do Coral da Manhã", "regente@paroquia.org", "2026-08-23T12:00:00.000Z");
+
+    expect(resultado[0]).toEqual(versoes[0]);
+    expect(resultado[1]).toEqual(versoes[1]);
+  });
+
+  it("preenche auditoria de criação e alteração na Versão nova", () => {
+    const resultado = adicionarVersao(versoes, conteudoNovo, "Tom do Coral da Manhã", "regente@paroquia.org", "2026-08-23T12:00:00.000Z");
+
+    expect(resultado[2]).toMatchObject({
+      criadoPor: "regente@paroquia.org",
+      criadoEm: "2026-08-23T12:00:00.000Z",
+      modificadoPor: "regente@paroquia.org",
+      modificadoEm: "2026-08-23T12:00:00.000Z",
+    });
+  });
+
+  it("gera um id não vazio e distinto dos das Versões já existentes", () => {
+    const resultado = adicionarVersao(versoes, conteudoNovo, "Tom do Coral da Manhã", "regente@paroquia.org", "2026-08-23T12:00:00.000Z");
+
+    expect(resultado[2].id).toBeTruthy();
+    expect(versoes.map((v) => v.id)).not.toContain(resultado[2].id);
   });
 });
 
