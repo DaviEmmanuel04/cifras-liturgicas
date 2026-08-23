@@ -5,22 +5,10 @@ import { transporAcorde } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
+import { TablaturaViewer } from "./TablaturaViewer";
 import Image from "next/image";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
-
-type Musica = {
-  id: string;
-  titulo: string;
-  artista?: string;
-  categoria: string;
-  tempo: string;
-  tom: string;
-  letraCifra: string;
-  criadoPor?: string;
-  criadoEm?: string;
-  modificadoPor?: string;
-  modificadoEm?: string;
-};
+import { Musica } from "@/types/musica";
 
 export function CifraViewer({ musica }: { musica: Musica }) {
   const [semitons, setSemitons] = useState(0);
@@ -39,6 +27,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
   const [scrollSpeed, setScrollSpeed] = useState<number>(30);
   const [showDiagrams, setShowDiagrams] = useState(true);
   const [printDiagrams, setPrintDiagrams] = useState(false);
+  const [printTablatura, setPrintTablatura] = useState(false);
   const [printTwoColumns, setPrintTwoColumns] = useState(true);
   const [somenteLetra, setSomenteLetra] = useState(false);
   
@@ -85,6 +74,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
   }, [isScrolling, scrollSpeed]);
 
   const tomAtual = transporAcorde(musica.tom, semitons);
+  const temTablatura = (musica.tablaturas?.length ?? 0) > 0;
 
   const opcoesTom = useMemo(() => {
     if (!musica.tom) return [];
@@ -217,7 +207,19 @@ export function CifraViewer({ musica }: { musica: Musica }) {
                 <span>Incluir diagramas na impressão</span>
               </label>
             )}
-            
+
+            {!somenteLetra && temTablatura && (
+              <label className="flex items-center gap-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={printTablatura}
+                  onChange={(e) => setPrintTablatura(e.target.checked)}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white"
+                />
+                <span>Incluir tablatura na impressão</span>
+              </label>
+            )}
+
             <label className="flex items-center gap-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -281,12 +283,34 @@ export function CifraViewer({ musica }: { musica: Musica }) {
           </div>
         )}
 
-        <div 
+        {/* Bloco de Tablatura — fixo acima da letra, sempre visível na tela quando há Seções cadastradas */}
+        {!somenteLetra && temTablatura && (
+          <div className="print:hidden border-b border-gray-150/70 bg-white">
+            <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100">
+              <span className="text-xs font-bold text-gray-600">Tablatura</span>
+            </div>
+            <div className="py-4 px-6 overflow-x-auto bg-[#fbfaf7]/30">
+              <TablaturaViewer secoes={musica.tablaturas ?? []} semitons={semitons} />
+            </div>
+          </div>
+        )}
+
+        <div
           className="bg-white p-4 md:p-8 rounded-b-2xl shadow-sm print-clean"
           style={{ fontSize: `${fontSize}px` }}
         >
-          <CifraRenderer 
-            texto={musica.letraCifra} 
+          {/* Tablatura na impressão — acima da letra, só quando marcada e "somente letra" não estiver ativo */}
+          {printTablatura && !somenteLetra && temTablatura && (
+            <div className="hidden print:block mb-8 pb-6 border-b border-gray-300">
+              <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">
+                Tablatura
+              </h4>
+              <TablaturaViewer secoes={musica.tablaturas ?? []} semitons={semitons} />
+            </div>
+          )}
+
+          <CifraRenderer
+            texto={musica.letraCifra}
             semitons={semitons} 
             somenteLetra={somenteLetra} 
             printTwoColumns={printTwoColumns}

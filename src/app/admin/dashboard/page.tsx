@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { RepertorioManager } from "@/components/RepertorioManager";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { useLiturgicalTheme, LiturgicalThemeMode } from "@/components/LiturgicalThemeProvider";
+import { Musica } from "@/types/musica";
 
 const colorOptions = [
   { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 border-[#d4cdbd] font-bold" },
@@ -24,19 +25,6 @@ const colorOptions = [
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
-
-type Musica = {
-  id: string;
-  titulo: string;
-  artista?: string;
-  categoria: string;
-  tempo: string;
-  tom: string;
-  criadoPor?: string;
-  criadoEm?: string;
-  modificadoPor?: string;
-  modificadoEm?: string;
-};
 
 export default function DashboardPage() {
   const { mode, setMode } = useLiturgicalTheme();
