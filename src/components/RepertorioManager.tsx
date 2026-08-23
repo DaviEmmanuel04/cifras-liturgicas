@@ -6,15 +6,8 @@ import { db, auth } from "@/lib/firebase";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
-
-type Musica = {
-  id: string;
-  titulo: string;
-  categoria: string;
-  tempo: string;
-  tom: string;
-};
+import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle, Layers } from "lucide-react";
+import type { Musica } from "@/types/musica";
 
 type Repertorio = {
   id: string;
@@ -22,6 +15,8 @@ type Repertorio = {
   data: string;
   ativo: boolean;
   musicasIds: string[];
+  /** Música → Versão fixada nesse item — ausente enquanto nenhum item deste Repertório fixa nada. Ver [[repertoriosComVersaoFixada]]. */
+  versoesFixadas?: Record<string, string>;
   criadoPor?: string;
   criadoEm?: string;
   modificadoPor?: string;
@@ -29,7 +24,19 @@ type Repertorio = {
 };
 
 // Componente individual arrastável
-function SortableItem({ id, musica, onRemove }: { id: string; musica: Musica; onRemove: (id: string) => void }) {
+function SortableItem({
+  id,
+  musica,
+  versaoFixadaId,
+  onRemove,
+  onSelecionarVersao,
+}: {
+  id: string;
+  musica: Musica;
+  versaoFixadaId?: string;
+  onRemove: (id: string) => void;
+  onSelecionarVersao: (musicaId: string, versaoId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const style = {
@@ -37,20 +44,44 @@ function SortableItem({ id, musica, onRemove }: { id: string; musica: Musica; on
     transition,
   };
 
+  // `versoes` só existe a partir da segunda Versão criada (ADR 0003) — o
+  // seletor só faz sentido a partir daí.
+  const versoes = musica.versoes ?? [];
+
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center justify-between bg-white p-3 rounded-lg border border-[#e4ded0] mb-2 shadow-sm z-10 relative">
-      <div className="flex items-center gap-3">
-        <button {...attributes} {...listeners} className="cursor-grab text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
+    <div ref={setNodeRef} style={style} className="flex items-center justify-between gap-2 bg-white p-3 rounded-lg border border-[#e4ded0] mb-2 shadow-sm z-10 relative">
+      <div className="flex items-center gap-3 min-w-0">
+        <button {...attributes} {...listeners} className="cursor-grab text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 shrink-0">
           <GripVertical size={18} />
         </button>
-        <div>
-          <p className="font-medium text-gray-800 text-sm">{musica.titulo}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-gray-800 text-sm truncate">{musica.titulo}</p>
           <p className="text-[10px] text-gray-500">{musica.categoria} • {musica.tom}</p>
         </div>
       </div>
-      <button onClick={() => onRemove(id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
-        <X size={16} />
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {versoes.length > 0 && (
+          <div className="flex items-center gap-1 bg-[#fbf9f4] border border-gray-250 rounded-lg px-2 py-1">
+            <Layers size={12} className="text-gray-400" />
+            <select
+              value={versaoFixadaId ?? ""}
+              onChange={(e) => onSelecionarVersao(musica.id, e.target.value)}
+              title="Versão fixada pra este item do Repertório"
+              className="bg-transparent text-[10px] font-semibold text-gray-600 border-none outline-none cursor-pointer max-w-[110px]"
+            >
+              <option value="">Principal (atual)</option>
+              {versoes.map((versao) => (
+                <option key={versao.id} value={versao.id}>
+                  {versao.rotulo}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <button onClick={() => onRemove(id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
+          <X size={16} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -70,6 +101,7 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
   const [dataEdicao, setDataEdicao] = useState("");
   const [ativoEdicao, setAtivoEdicao] = useState(false);
   const [musicasIds, setMusicasIds] = useState<string[]>([]);
+  const [versoesFixadas, setVersoesFixadas] = useState<Record<string, string>>({});
   const [selectedMusicId, setSelectedMusicId] = useState("");
 
   // Inicializar data padrão como a data atual local
@@ -110,6 +142,7 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
     setDataEdicao(rep.data);
     setAtivoEdicao(rep.ativo);
     setMusicasIds(rep.musicasIds || []);
+    setVersoesFixadas(rep.versoesFixadas || {});
     setSelectedMusicId("");
   };
 
@@ -195,17 +228,35 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
     setMusicasIds(musicasIds.filter((i) => i !== id));
   };
 
+  // Fixa (ou, com `versaoId` vazio, desfixa — volta a seguir a Principal) a
+  // Versão usada por este item pra `musicaId`. Só estado local; persistido
+  // junto do resto em handleSaveRepertorio.
+  const handleSelecionarVersaoFixada = (musicaId: string, versaoId: string) => {
+    setVersoesFixadas((atual) => {
+      if (!versaoId) {
+        return Object.fromEntries(Object.entries(atual).filter(([id]) => id !== musicaId));
+      }
+      return { ...atual, [musicaId]: versaoId };
+    });
+  };
+
   // Salvar alterações do repertório selecionado (incluindo metadados)
   const handleSaveRepertorio = async () => {
     if (!selectedRepId) return;
     setSaving(true);
     try {
       const emailUsuario = auth.currentUser?.email || "admin";
+      // Só persiste fixações de músicas que continuam no repertório — uma
+      // removida durante esta edição não deixa associação órfã salva.
+      const versoesFixadasFiltradas = Object.fromEntries(
+        Object.entries(versoesFixadas).filter(([musicaId]) => musicasIds.includes(musicaId))
+      );
       const payload = {
         nome: nomeEdicao.trim(),
         data: dataEdicao,
         ativo: ativoEdicao,
         musicasIds: musicasIds,
+        versoesFixadas: versoesFixadasFiltradas,
         modificadoPor: emailUsuario,
         modificadoEm: new Date().toISOString()
       };
@@ -342,7 +393,16 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
                   {musicasIds.map((id) => {
                     const musica = musicas.find((m) => m.id === id);
                     if (!musica) return null;
-                    return <SortableItem key={id} id={id} musica={musica} onRemove={handleRemoveMusic} />;
+                    return (
+                      <SortableItem
+                        key={id}
+                        id={id}
+                        musica={musica}
+                        versaoFixadaId={versoesFixadas[id]}
+                        onRemove={handleRemoveMusic}
+                        onSelecionarVersao={handleSelecionarVersaoFixada}
+                      />
+                    );
                   })}
                 </div>
               </SortableContext>

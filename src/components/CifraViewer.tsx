@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { transporAcorde } from "@/utils/transposicao";
+import { opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
@@ -76,44 +76,7 @@ export function CifraViewer({ musica }: { musica: Musica }) {
   const tomAtual = transporAcorde(musica.tom, semitons);
   const temTablatura = (musica.tablaturas?.length ?? 0) > 0;
 
-  const opcoesTom = useMemo(() => {
-    if (!musica.tom) return [];
-    const match = musica.tom.match(/^([CDEFGAB][#b]?)(.*)$/);
-    if (!match) return [{ semitons: 0, label: musica.tom }];
-    
-    const root = match[1];
-    
-    const notasSustenido = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const notasBemol = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-    
-    let originalRootIndex = notasSustenido.indexOf(root);
-    let usouBemol = false;
-    
-    if (originalRootIndex === -1) {
-      originalRootIndex = notasBemol.indexOf(root);
-      usouBemol = true;
-    }
-    
-    if (originalRootIndex === -1) {
-      return [{ semitons: 0, label: musica.tom }];
-    }
-    
-    const options = [];
-    
-    for (let i = 0; i < 12; i++) {
-      let offset = i - originalRootIndex;
-      if (offset > 5) offset -= 12;
-      if (offset <= -6) offset += 12;
-      
-      const tomTransposto = transporAcorde(musica.tom, offset);
-      options.push({
-        semitons: offset,
-        label: offset === 0 ? `⭐ ${tomTransposto}` : tomTransposto
-      });
-    }
-    
-    return options;
-  }, [musica.tom]);
+  const opcoesTom = useMemo(() => opcoesTransposicao(musica.tom), [musica.tom]);
 
   // Extrair acordes únicos originais
   const uniqueChords = useMemo(() => {
