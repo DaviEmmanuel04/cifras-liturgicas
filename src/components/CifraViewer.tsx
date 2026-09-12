@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { opcoesCapotraste, opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
+import { opcoesCapotraste, opcoesTransposicao, transporAcorde, transporAcordeComCapotraste } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
@@ -109,11 +109,14 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
     return Array.from(acordesBrutos);
   }, [musica.letraCifra]);
 
-  // Transpor os acordes únicos conforme semitons
+  // Forma exibida de cada acorde único: tom atual (semitons) + capotraste em
+  // cadeia — os diagramas (ChordDiagram) sempre seguem a forma já exibida
+  // acima da letra, nunca o Tom salvo puro. Ver CONTEXT.md, "Capotraste", e
+  // docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md.
   const uniqueChordsTransposed = useMemo(() => {
-    const transposed = uniqueChords.map(ac => transporAcorde(ac, semitons));
+    const transposed = uniqueChords.map(ac => transporAcordeComCapotraste(transporAcorde(ac, semitons), capotraste));
     return Array.from(new Set(transposed));
-  }, [uniqueChords, semitons]);
+  }, [uniqueChords, semitons, capotraste]);
   return (
     <div className="pb-20 md:pb-32">
       <div id="cifra-content" className="relative">
