@@ -79,32 +79,18 @@ export function opcoesTransposicao(tomOriginal: string): OpcaoTom[] {
 }
 
 /**
- * A forma de um acorde já no tom atual (Tom salvo, considerando `semitons`
- * da transposição ao vivo se houver) depois de aplicar `capotraste` casas —
- * uma segunda chamada em cadeia sobre `transporAcorde`, reaproveitando a
- * mesma lógica de transposição, não um sistema novo. Rebaixa a forma pelo
- * tanto de casas do capotraste (um capo levanta o som, então a forma
- * precisa ser mais grave pra soar igual); `capotraste` 0 é no-op. Ver
- * CONTEXT.md, "Capotraste", e
- * docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md.
+ * O Tom real que soa quando um capotraste está ativo: o tom atual (Tom
+ * salvo, considerando `semitons` da transposição ao vivo se houver)
+ * transposto pra cima pelo número de casas do capotraste — reaproveitando
+ * `transporAcorde` já existente, não um sistema de transposição novo. Um
+ * capotraste levanta o som sem mudar a forma tocada, por isso soma (nunca
+ * subtrai) as casas; `capotraste` 0 é no-op. Os acordes exibidos (texto da
+ * Cifra, Diagramas de Acorde) nunca passam por esta função — só o badge de
+ * Tom muda. Ver CONTEXT.md, "Capotraste", e
+ * docs/adr/0006-capotraste-como-anotacao-do-tom-exibido.md.
  */
-export function transporAcordeComCapotraste(acordeAtual: string, capotraste: number): string {
-  return transporAcorde(acordeAtual, -capotraste);
-}
-
-/** Equivalente a `transporAcordeComCapotraste`, mas pra uma Cifra (`letraCifra`) inteira. */
-export function transporCifraComCapotraste(cifraAtual: string, capotraste: number): string {
-  return transporCifra(cifraAtual, -capotraste);
-}
-
-/**
- * A forma efetivamente exibida de um acorde: `semitons` (Tom atual) e
- * `capotraste` compostos em cadeia sobre `acordeCru` — a mesma composição
- * usada tanto no texto da Cifra (`CifraRenderer`) quanto no painel de
- * diagramas (`CifraViewer`), pra nunca divergir entre os dois.
- */
-export function acordeExibido(acordeCru: string, semitons: number, capotraste: number): string {
-  return transporAcordeComCapotraste(transporAcorde(acordeCru, semitons), capotraste);
+export function tomRealComCapotraste(tomAtual: string, capotraste: number): string {
+  return transporAcorde(tomAtual, capotraste);
 }
 
 /** Maior casa de Capotraste aceita pelos seletores. Ver CONTEXT.md, "Capotraste". */

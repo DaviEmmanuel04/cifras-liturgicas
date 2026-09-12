@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  acordeExibido,
-  opcoesCapotraste,
-  opcoesTransposicao,
-  transporAcorde,
-  transporAcordeComCapotraste,
-  transporCifra,
-  transporCifraComCapotraste,
-} from "./transposicao";
+import { opcoesCapotraste, opcoesTransposicao, tomRealComCapotraste, transporAcorde, transporCifra } from "./transposicao";
 
 describe("transporAcorde", () => {
   it("retorna o próprio acorde quando semitons é 0", () => {
@@ -86,62 +78,22 @@ describe("opcoesTransposicao", () => {
   });
 });
 
-describe("transporAcordeComCapotraste", () => {
-  it("capotraste 0 é no-op: a forma retornada é idêntica ao tom atual recebido", () => {
-    expect(transporAcordeComCapotraste("D", 0)).toBe("D");
+describe("tomRealComCapotraste", () => {
+  it("capotraste 0 é no-op: o Tom real retornado é idêntico ao tom atual recebido", () => {
+    expect(tomRealComCapotraste("D", 0)).toBe("D");
   });
 
-  it("rebaixa a forma pelo tanto de casas do capotraste", () => {
-    expect(transporAcordeComCapotraste("D", 2)).toBe("C");
+  it("soma o tanto de casas do capotraste ao tom atual (transpõe pra cima)", () => {
+    expect(tomRealComCapotraste("D", 2)).toBe("E");
   });
 
   it("compõe corretamente sobre um tom atual já transposto por semitons", () => {
-    const tomAtual = transporAcorde("C", 2); // preview de +2 semitons já aplicado
-    expect(transporAcordeComCapotraste(tomAtual, 2)).toBe("C");
+    const tomAtual = transporAcorde("C", 2); // preview de +2 semitons já aplicado = D
+    expect(tomRealComCapotraste(tomAtual, 2)).toBe("E");
   });
 
   it("retorna string vazia/falsy sem alterações", () => {
-    expect(transporAcordeComCapotraste("", 3)).toBe("");
-  });
-});
-
-describe("transporCifraComCapotraste", () => {
-  it("capotraste 0 é no-op: a Cifra retornada é idêntica à recebida", () => {
-    const texto = "[D] Senhor, tende [A] piedade";
-    expect(transporCifraComCapotraste(texto, 0)).toBe(texto);
-  });
-
-  it("rebaixa cada acorde reconhecido pelo tanto de casas do capotraste", () => {
-    expect(transporCifraComCapotraste("[D] Senhor, tende [A] piedade", 2)).toBe("[C] Senhor, tende [G] piedade");
-  });
-
-  it("retorna o texto inalterado quando não há nenhum acorde entre colchetes", () => {
-    const texto = "Refrão:\nSenhor, tende piedade de nós.";
-    expect(transporCifraComCapotraste(texto, 2)).toBe(texto);
-  });
-
-  it("mantém um token não reconhecido como acorde inalterado, sem quebrar o texto", () => {
-    const texto = "[Solo] [D] Glória a Deus [A]";
-    expect(transporCifraComCapotraste(texto, 2)).toBe("[Solo] [C] Glória a Deus [G]");
-  });
-});
-
-describe("acordeExibido", () => {
-  it("compõe semitons e capotraste em cadeia sobre o acorde original", () => {
-    // C +2 semitons (Tom atual) = D; D com capotraste na 2ª casa = C.
-    expect(acordeExibido("C", 2, 2)).toBe("C");
-  });
-
-  it("semitons 0 e capotraste 0: retorna o próprio acorde original", () => {
-    expect(acordeExibido("G", 0, 0)).toBe("G");
-  });
-
-  it("só capotraste, sem semitons: rebaixa a forma pelo tanto de casas", () => {
-    expect(acordeExibido("D", 0, 2)).toBe("C");
-  });
-
-  it("mantém um token não reconhecido como acorde inalterado", () => {
-    expect(acordeExibido("Solo", 2, 2)).toBe("Solo");
+    expect(tomRealComCapotraste("", 3)).toBe("");
   });
 });
 

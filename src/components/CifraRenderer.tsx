@@ -1,21 +1,17 @@
-import { acordeExibido } from "@/utils/transposicao";
+import { transporAcorde } from "@/utils/transposicao";
 
 export function CifraRenderer({
   texto,
   semitons = 0,
-  capotraste = 0,
   somenteLetra = false,
   printTwoColumns = false
 }: {
   texto: string;
   semitons?: number;
-  /** Capotraste ao vivo, sempre por cima do tom atual (que já considera `semitons`) — ver CONTEXT.md, "Capotraste". */
-  capotraste?: number;
   somenteLetra?: boolean;
   printTwoColumns?: boolean;
 }) {
   const linhas = texto.split('\n');
-  const transformarAcorde = (acordeCru: string) => acordeExibido(acordeCru, semitons, capotraste);
 
   return (
     <div className={`font-sans ${printTwoColumns ? "print-columns-2" : ""}`}>
@@ -52,7 +48,7 @@ export function CifraRenderer({
               {partes.map((parte, idx) => {
                 if (parte.startsWith('[') && parte.endsWith(']')) {
                   const acordeCru = parte.slice(1, -1);
-                  const acorde = transformarAcorde(acordeCru);
+                  const acorde = transporAcorde(acordeCru, semitons);
                   return (
                     <span key={idx} className="text-primary-700 font-extrabold font-mono text-[1.125em] tracking-wider">
                       {acorde}
@@ -89,7 +85,7 @@ export function CifraRenderer({
           const parte = partes[i];
           if (parte.startsWith('[') && parte.endsWith(']')) {
             const acordeCru = parte.slice(1, -1);
-            acordeAtual = transformarAcorde(acordeCru);
+            acordeAtual = transporAcorde(acordeCru, semitons);
           } else {
             segmentos.push({ acorde: acordeAtual, texto: parte });
             acordeAtual = null; // Reseta para o próximo trecho
