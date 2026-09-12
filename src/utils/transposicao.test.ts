@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  acordeExibido,
   opcoesCapotraste,
   opcoesTransposicao,
   transporAcorde,
@@ -122,6 +123,25 @@ describe("transporCifraComCapotraste", () => {
   it("mantém um token não reconhecido como acorde inalterado, sem quebrar o texto", () => {
     const texto = "[Solo] [D] Glória a Deus [A]";
     expect(transporCifraComCapotraste(texto, 2)).toBe("[Solo] [C] Glória a Deus [G]");
+  });
+});
+
+describe("acordeExibido", () => {
+  it("compõe semitons e capotraste em cadeia sobre o acorde original", () => {
+    // C +2 semitons (Tom atual) = D; D com capotraste na 2ª casa = C.
+    expect(acordeExibido("C", 2, 2)).toBe("C");
+  });
+
+  it("semitons 0 e capotraste 0: retorna o próprio acorde original", () => {
+    expect(acordeExibido("G", 0, 0)).toBe("G");
+  });
+
+  it("só capotraste, sem semitons: rebaixa a forma pelo tanto de casas", () => {
+    expect(acordeExibido("D", 0, 2)).toBe("C");
+  });
+
+  it("mantém um token não reconhecido como acorde inalterado", () => {
+    expect(acordeExibido("Solo", 2, 2)).toBe("Solo");
   });
 });
 

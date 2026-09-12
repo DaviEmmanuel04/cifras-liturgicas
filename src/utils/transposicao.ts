@@ -97,6 +97,16 @@ export function transporCifraComCapotraste(cifraAtual: string, capotraste: numbe
   return transporCifra(cifraAtual, -capotraste);
 }
 
+/**
+ * A forma efetivamente exibida de um acorde: `semitons` (Tom atual) e
+ * `capotraste` compostos em cadeia sobre `acordeCru` — a mesma composição
+ * usada tanto no texto da Cifra (`CifraRenderer`) quanto no painel de
+ * diagramas (`CifraViewer`), pra nunca divergir entre os dois.
+ */
+export function acordeExibido(acordeCru: string, semitons: number, capotraste: number): string {
+  return transporAcordeComCapotraste(transporAcorde(acordeCru, semitons), capotraste);
+}
+
 /** Maior casa de Capotraste aceita pelos seletores (ver `spec.md`, Out of Scope). */
 export const CAPOTRASTE_MAXIMO = 7;
 

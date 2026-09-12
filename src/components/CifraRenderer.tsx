@@ -1,4 +1,4 @@
-import { transporAcorde, transporAcordeComCapotraste } from "@/utils/transposicao";
+import { acordeExibido } from "@/utils/transposicao";
 
 export function CifraRenderer({
   texto,
@@ -15,9 +15,7 @@ export function CifraRenderer({
   printTwoColumns?: boolean;
 }) {
   const linhas = texto.split('\n');
-  // As duas transformações compõem em cadeia, nunca uma substitui a outra:
-  // primeiro semitons (Tom atual), depois capotraste (forma exibida).
-  const transformarAcorde = (acordeCru: string) => transporAcordeComCapotraste(transporAcorde(acordeCru, semitons), capotraste);
+  const transformarAcorde = (acordeCru: string) => acordeExibido(acordeCru, semitons, capotraste);
 
   return (
     <div className={`font-sans ${printTwoColumns ? "print-columns-2" : ""}`}>

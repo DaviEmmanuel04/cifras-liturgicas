@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { opcoesCapotraste, opcoesTransposicao, transporAcorde, transporAcordeComCapotraste } from "@/utils/transposicao";
+import { acordeExibido, opcoesCapotraste, opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
@@ -114,7 +114,7 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
   // acima da letra, nunca o Tom salvo puro. Ver CONTEXT.md, "Capotraste", e
   // docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md.
   const uniqueChordsTransposed = useMemo(() => {
-    const transposed = uniqueChords.map(ac => transporAcordeComCapotraste(transporAcorde(ac, semitons), capotraste));
+    const transposed = uniqueChords.map(ac => acordeExibido(ac, semitons, capotraste));
     return Array.from(new Set(transposed));
   }, [uniqueChords, semitons, capotraste]);
   return (
