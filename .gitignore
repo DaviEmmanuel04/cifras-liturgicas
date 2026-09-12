@@ -45,3 +45,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# docs para agentes (skills, ADRs) — não versionadas
+/docs/agents/
+/docs/adr/
