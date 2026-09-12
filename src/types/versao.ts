@@ -14,6 +14,19 @@ export type Versao = {
   tom: string;
   letraCifra: string;
   tablaturas?: SecaoTablatura[];
+  /**
+   * Id do vídeo de referência do YouTube próprio desta Versão (ver
+   * CONTEXT.md, "Vídeo de Referência"). Vazio/ausente significa que esta
+   * Versão não tem vídeo próprio — nesse caso, `videoReferenciaSuprimida`
+   * decide se ela herda o Vídeo de Referência Padrão da Música.
+   */
+  videoReferencia?: string;
+  /**
+   * Quando `true`, esta Versão explicitamente não mostra nenhum vídeo, nem
+   * mesmo o Vídeo de Referência Padrão da Música — mesmo sem um vídeo
+   * próprio. Só tem efeito quando `videoReferencia` está vazio.
+   */
+  videoReferenciaSuprimida?: boolean;
   criadoPor?: string;
   criadoEm?: string;
   modificadoPor?: string;

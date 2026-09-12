@@ -11,6 +11,22 @@ export type Musica = {
   letraCifra: string;
   tablaturas?: SecaoTablatura[];
   /**
+   * Vídeo de Referência próprio da Versão implícita (a Principal, enquanto
+   * `versoes` não existe) — mesmo papel de `tom`/`letraCifra` acima: espelha
+   * o campo equivalente em `Versao` pra Música nunca depender da coleção
+   * existir. Ver CONTEXT.md, "Vídeo de Referência".
+   */
+  videoReferencia?: string;
+  /** Espelho de `Versao.videoReferenciaSuprimida` pra Versão implícita. */
+  videoReferenciaSuprimida?: boolean;
+  /**
+   * Vídeo de Referência Padrão da Música: fallback pra qualquer Versão sem
+   * vídeo próprio nem supressão. Independente de qual Versão é a Principal —
+   * ver CONTEXT.md, "Vídeo de Referência Padrão", e
+   * docs/adr/0004-video-de-referencia-padrao-desacoplado-da-principal.md.
+   */
+  videoReferenciaPadrao?: string;
+  /**
    * Coleção de Versões da Música. Ausente enquanto a Música só tem uma
    * Versão implícita (os campos de topo acima, sem migração necessária) —
    * só passa a existir a partir do momento em que uma segunda Versão é

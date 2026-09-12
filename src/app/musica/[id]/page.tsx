@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Musica } from '@/types/musica';
 import { tablaturasDeFirestore } from '@/utils/tablaturaFirestore';
 import { versoesDeFirestore } from '@/utils/versaoFirestore';
-import { resolverConteudoVersao, resolverVersaoIdEfetivo } from '@/utils/resolverVersao';
+import { resolverConteudoVersao, resolverVersaoIdEfetivo, resolverVideoReferencia } from '@/utils/resolverVersao';
 
 export default function MusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -107,6 +107,10 @@ function MusicaPageConteudo({ id }: { id: string }) {
   const conteudo = resolverConteudoVersao(musica, versaoIdNaUrl);
   const versaoSelecionadaId = resolverVersaoIdEfetivo(musica, versaoIdNaUrl);
   const musicaExibida: Musica = { ...musica, ...conteudo };
+  // Resolvido a partir da Música original (não de `musicaExibida`) porque
+  // depende também de `videoReferenciaPadrao`, que não é conteúdo de Versão
+  // e por isso não está em `conteudo` — ver CONTEXT.md, "Vídeo de Referência".
+  const videoReferenciaId = resolverVideoReferencia(musica, versaoIdNaUrl);
   // `versoes` só existe a partir da segunda Versão criada (ADR 0003) — sua
   // mera presença já implica 2+, mesmo padrão de `versoesExistentes.length >
   // 0` usado na tela de admin.
@@ -140,7 +144,7 @@ function MusicaPageConteudo({ id }: { id: string }) {
         {/* `key` força remontar ao trocar de Versão: o Tom transposto ao vivo
             (estado interno do CifraViewer) é sempre relativo à Versão atual —
             sem isto, o offset de uma Versão vazaria pro Tom salvo da próxima. */}
-        <CifraViewer key={versaoSelecionadaId ?? musica.id} musica={musicaExibida} />
+        <CifraViewer key={versaoSelecionadaId ?? musica.id} musica={musicaExibida} videoReferenciaId={videoReferenciaId} />
       </div>
     </main>
   );

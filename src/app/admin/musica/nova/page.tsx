@@ -5,7 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save, Upload, Youtube } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -13,6 +13,7 @@ import { convertPdfAction } from "@/app/actions";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
+import { extrairIdYoutube } from "@/utils/youtube";
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -32,7 +33,12 @@ export default function NovaMusicaPage() {
     categoria: "",
     tempo: "",
     tom: "",
-    letraCifra: ""
+    letraCifra: "",
+    // Vídeo de Referência (opcional) — texto livre (URL colada), validado e
+    // convertido em id só no momento de salvar. Um Vídeo de Referência
+    // Padrão pode ser definido depois, na tela de edição, se a Música vier a
+    // ter mais de uma Versão.
+    videoReferencia: ""
   });
   const [tablaturas, setTablaturas] = useState<SecaoTablatura[]>([]);
   // Trava assim que a primeira Seção é adicionada, pra o Tom exibido no
@@ -106,11 +112,20 @@ export default function NovaMusicaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const videoTexto = formData.videoReferencia.trim();
+    const videoId = videoTexto ? extrairIdYoutube(videoTexto) : undefined;
+    if (videoTexto && !videoId) {
+      alert("O link de Vídeo de Referência não foi reconhecido como um vídeo do YouTube. Verifique e tente novamente.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       await addDoc(collection(db, "musicas"), {
         ...formData,
+        videoReferencia: videoId ?? "",
         tablaturas: tablaturasParaFirestore(tablaturas),
         criadoEm: new Date().toISOString(),
         criadoPor: auth.currentUser?.email || "Anônimo",
@@ -236,6 +251,24 @@ export default function NovaMusicaPage() {
                 onChange={handleChange}
                 className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                 placeholder="Ex: C, F#m, Bb..."
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                <Youtube size={15} className="text-gray-400" />
+                Vídeo de Referência <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Link do YouTube exibido publicamente na cifra como referência de execução.
+              </p>
+              <input
+                type="text"
+                name="videoReferencia"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={formData.videoReferencia}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
 

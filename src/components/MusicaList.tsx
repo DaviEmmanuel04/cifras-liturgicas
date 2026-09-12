@@ -348,7 +348,7 @@ export function MusicaList() {
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
-            className="flex-1 p-3 border border-gray-200 rounded-xl bg-white text-gray-700 text-xs font-semibold focus:ring-2 focus:ring-primary-500 outline-none transition-all cursor-pointer shadow-sm"
+            className="flex-1 min-w-0 p-3 border border-gray-200 rounded-xl bg-white text-gray-700 text-xs font-semibold focus:ring-2 focus:ring-primary-500 outline-none transition-all cursor-pointer shadow-sm"
           >
             <option value="">Todas as Categorias</option>
             {categoriasUnicas.map((cat) => (
@@ -361,7 +361,7 @@ export function MusicaList() {
           <select
             value={tempo}
             onChange={(e) => setTempo(e.target.value)}
-            className="flex-1 p-3 border border-gray-200 rounded-xl bg-white text-gray-700 text-xs font-semibold focus:ring-2 focus:ring-primary-500 outline-none transition-all cursor-pointer shadow-sm"
+            className="flex-1 min-w-0 p-3 border border-gray-200 rounded-xl bg-white text-gray-700 text-xs font-semibold focus:ring-2 focus:ring-primary-500 outline-none transition-all cursor-pointer shadow-sm"
           >
             <option value="">Todos os Tempos</option>
             {temposUnicos.map((t) => (

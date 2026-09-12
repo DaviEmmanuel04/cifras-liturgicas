@@ -13,7 +13,9 @@ import type { ConteudoVersao } from "@/utils/resolverVersao";
 export function atualizarVersao(
   versoes: Versao[],
   versaoId: string,
-  patch: Partial<Pick<Versao, "rotulo" | "tom" | "letraCifra" | "tablaturas">>,
+  patch: Partial<
+    Pick<Versao, "rotulo" | "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida">
+  >,
   autor: string,
   agora: string
 ): Versao[] {
@@ -33,7 +35,13 @@ export function promoverVersaoPrincipal(versoes: Versao[], versaoId: string): Co
   const versao = versoes.find((v) => v.id === versaoId);
   if (!versao) throw new Error(`Versão "${versaoId}" não encontrada.`);
 
-  return { tom: versao.tom, letraCifra: versao.letraCifra, tablaturas: versao.tablaturas };
+  return {
+    tom: versao.tom,
+    letraCifra: versao.letraCifra,
+    tablaturas: versao.tablaturas,
+    videoReferencia: versao.videoReferencia,
+    videoReferenciaSuprimida: versao.videoReferenciaSuprimida,
+  };
 }
 
 export type AvaliacaoExclusaoVersao = { permitido: true } | { permitido: false; motivo: string };

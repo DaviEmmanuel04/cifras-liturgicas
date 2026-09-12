@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Layers, Minus, Pencil, Plus, RotateCcw, Save, Star, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Copy, Layers, Minus, Pencil, Plus, RotateCcw, Save, Star, Trash2, Upload, X, Youtube } from "lucide-react";
 import { CifraRenderer } from "@/components/CifraRenderer";
 import { InteractiveCifraEditor } from "@/components/InteractiveCifraEditor";
 import { TablaturaEditor } from "@/components/TablaturaEditor";
@@ -26,9 +26,23 @@ import {
 } from "@/utils/gerenciarVersoes";
 import type { ConteudoVersao } from "@/utils/resolverVersao";
 import type { Versao } from "@/types/versao";
+import { extrairIdYoutube, urlAssistirYoutube } from "@/utils/youtube";
 
 /** Sugestão inicial (editável) pro rótulo da Versão que já existia, ao criar a segunda Versão de uma Música. */
 const ROTULO_SUGERIDO_VERSAO_EXISTENTE = "Original";
+
+/**
+ * Interpreta o texto de um campo de Vídeo de Referência (URL colada, ou o id
+ * puro): vazio é válido (nenhum vídeo); texto não-vazio só é válido quando
+ * reconhecível como link do YouTube. Usada tanto no campo próprio da Versão
+ * quanto no Vídeo de Referência Padrão da Música — ver CONTEXT.md.
+ */
+const processarCampoVideo = (texto: string): { id?: string; valido: boolean } => {
+  const limpo = texto.trim();
+  if (!limpo) return { id: undefined, valido: true };
+  const id = extrairIdYoutube(limpo);
+  return { id, valido: id !== undefined };
+};
 
 const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
@@ -52,6 +66,15 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     tempo: "",
     tom: "",
     letraCifra: "",
+    // Vídeo de Referência da Versão em edição (texto livre do campo — URL
+    // colada ou id — validado e convertido em id só no momento de salvar).
+    videoReferencia: "",
+    // Suprime explicitamente o Vídeo de Referência Padrão nesta Versão,
+    // mesmo sem um vídeo próprio (ver CONTEXT.md, "Vídeo de Referência").
+    videoReferenciaSuprimida: false,
+    // Vídeo de Referência Padrão da Música — independente de qual Versão
+    // está sendo editada, nunca troca ao usar o seletor "Editando".
+    videoReferenciaPadrao: "",
     criadoEm: "",
     criadoPor: "",
     atualizadoEm: "",
@@ -113,6 +136,9 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             tempo: data.tempo || "",
             tom: data.tom || "",
             letraCifra: data.letraCifra || "",
+            videoReferencia: data.videoReferencia ? urlAssistirYoutube(data.videoReferencia) : "",
+            videoReferenciaSuprimida: !!data.videoReferenciaSuprimida,
+            videoReferenciaPadrao: data.videoReferenciaPadrao ? urlAssistirYoutube(data.videoReferenciaPadrao) : "",
             criadoEm: data.criadoEm || "",
             criadoPor: data.criadoPor || "",
             atualizadoEm: data.atualizadoEm || "",
@@ -148,6 +174,22 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setSujo(true);
+  };
+
+  /**
+   * Alterna a supressão do Vídeo de Referência Padrão nesta Versão. Os dois
+   * estados (vídeo próprio / suprimido) são mutuamente exclusivos na UI:
+   * suprimir limpa o campo de texto; digitar um vídeo próprio desmarca a
+   * supressão — ver CONTEXT.md, "Vídeo de Referência".
+   */
+  const handleToggleVideoReferenciaSuprimida = (suprimida: boolean) => {
+    setFormData((prev) => ({ ...prev, videoReferenciaSuprimida: suprimida, videoReferencia: suprimida ? "" : prev.videoReferencia }));
+    setSujo(true);
+  };
+
+  const handleChangeVideoReferencia = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, videoReferencia: e.target.value, videoReferenciaSuprimida: false }));
     setSujo(true);
   };
 
@@ -222,30 +264,43 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (modoNovaVersao) return; // salvar aqui é só via "Salvar como Nova Versão"
+
+    if (videoReferenciaInvalida || videoReferenciaPadraoInvalida) {
+      alert("Um dos links de Vídeo de Referência não foi reconhecido como um vídeo do YouTube. Verifique e tente novamente.");
+      return;
+    }
+
     setSaving(true);
 
     try {
       const { autor, agora } = autoriaAtual();
+      const videoProprio = formData.videoReferenciaSuprimida ? undefined : videoReferenciaProcessada.id;
 
       const payload: Record<string, unknown> = {
         titulo: formData.titulo,
         artista: formData.artista,
         categoria: formData.categoria,
         tempo: formData.tempo,
+        // Vídeo de Referência Padrão é sempre da Música, não importa qual
+        // Versão está carregada — nunca muda com o seletor "Editando".
+        videoReferenciaPadrao: videoReferenciaPadraoProcessada.id ?? "",
         atualizadoEm: agora,
         atualizadoPor: autor
       };
 
-      // Título/Artista/Categoria/Tempo são sempre da Música, não importa qual
-      // Versão está carregada. Tom/Cifra/Tablatura, porém, pertencem à Versão
-      // selecionada no seletor "Editando" (`versaoEmEdicaoId`) — os campos de
-      // topo da Música só espelham a Principal (ADR 0003), então só mudam
-      // quando é ela que está sendo editada agora.
+      // Título/Artista/Categoria/Tempo/Vídeo Padrão são sempre da Música, não
+      // importa qual Versão está carregada. Tom/Cifra/Tablatura/Vídeo de
+      // Referência próprio, porém, pertencem à Versão selecionada no seletor
+      // "Editando" (`versaoEmEdicaoId`) — os campos de topo da Música só
+      // espelham a Principal (ADR 0003), então só mudam quando é ela que
+      // está sendo editada agora.
       const editandoPrincipal = versoesExistentes.length === 0 || versaoEmEdicaoId === versaoPrincipalId;
       if (editandoPrincipal) {
         payload.tom = formData.tom;
         payload.letraCifra = formData.letraCifra;
         payload.tablaturas = tablaturasParaFirestore(tablaturas);
+        payload.videoReferencia = videoProprio ?? "";
+        payload.videoReferenciaSuprimida = formData.videoReferenciaSuprimida;
       }
 
       // A partir do momento em que a coleção de Versões existe, toda edição
@@ -257,7 +312,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         versoesAtualizadas = atualizarVersao(
           versoesExistentes,
           versaoEmEdicaoId,
-          { tom: formData.tom, letraCifra: formData.letraCifra, tablaturas },
+          {
+            tom: formData.tom,
+            letraCifra: formData.letraCifra,
+            tablaturas,
+            videoReferencia: videoProprio ?? "",
+            videoReferenciaSuprimida: formData.videoReferenciaSuprimida
+          },
           autor,
           agora
         );
@@ -281,7 +342,9 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
   const conteudoVersaoDoFormulario = (): ConteudoVersao => ({
     tom: formData.tom,
     letraCifra: formData.letraCifra,
-    tablaturas
+    tablaturas,
+    videoReferencia: formData.videoReferenciaSuprimida ? undefined : videoReferenciaProcessada.id,
+    videoReferenciaSuprimida: formData.videoReferenciaSuprimida
   });
 
   const iniciarDuplicacao = () => {
@@ -292,7 +355,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const cancelarDuplicacao = () => {
     if (!conteudoVersaoOriginal) return;
-    setFormData(prev => ({ ...prev, tom: conteudoVersaoOriginal.tom, letraCifra: conteudoVersaoOriginal.letraCifra }));
+    setFormData(prev => ({
+      ...prev,
+      tom: conteudoVersaoOriginal.tom,
+      letraCifra: conteudoVersaoOriginal.letraCifra,
+      videoReferencia: conteudoVersaoOriginal.videoReferencia ? urlAssistirYoutube(conteudoVersaoOriginal.videoReferencia) : "",
+      videoReferenciaSuprimida: !!conteudoVersaoOriginal.videoReferenciaSuprimida
+    }));
     setTablaturas(conteudoVersaoOriginal.tablaturas ?? []);
     setConteudoVersaoOriginal(null);
     setModoNovaVersao(false);
@@ -348,6 +417,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       tom: conteudoAtual.tom,
       letraCifra: conteudoAtual.letraCifra,
       tablaturas: tablaturasParaFirestore(conteudoAtual.tablaturas ?? []),
+      videoReferencia: conteudoAtual.videoReferencia ?? "",
+      videoReferenciaSuprimida: conteudoAtual.videoReferenciaSuprimida ?? false,
       versoes: versoesParaFirestore(resultado.versoes),
       versaoPrincipalId: resultado.versaoPrincipalId,
       atualizadoEm: agora,
@@ -365,6 +436,11 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
    */
   const salvarComoNovaVersao = async () => {
     if (!conteudoVersaoOriginal) return;
+
+    if (videoReferenciaInvalida) {
+      alert("O link de Vídeo de Referência não foi reconhecido como um vídeo do YouTube. Verifique e tente novamente.");
+      return;
+    }
 
     if (versoesExistentes.length === 0) {
       const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão:");
@@ -398,7 +474,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       });
 
       setVersoesExistentes(atualizadas);
-      setFormData(prev => ({ ...prev, tom: conteudoVersaoOriginal.tom, letraCifra: conteudoVersaoOriginal.letraCifra }));
+      setFormData(prev => ({
+        ...prev,
+        tom: conteudoVersaoOriginal.tom,
+        letraCifra: conteudoVersaoOriginal.letraCifra,
+        videoReferencia: conteudoVersaoOriginal.videoReferencia ? urlAssistirYoutube(conteudoVersaoOriginal.videoReferencia) : "",
+        videoReferenciaSuprimida: !!conteudoVersaoOriginal.videoReferenciaSuprimida
+      }));
       setTablaturas(conteudoVersaoOriginal.tablaturas ?? []);
       setConteudoVersaoOriginal(null);
       setModoNovaVersao(false);
@@ -422,6 +504,11 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
    */
   const salvarComoVersaoTransposta = async () => {
     if (previewSemitons === 0) return;
+
+    if (videoReferenciaInvalida) {
+      alert("O link de Vídeo de Referência não foi reconhecido como um vídeo do YouTube. Verifique e tente novamente.");
+      return;
+    }
 
     const conteudoAtual = conteudoVersaoDoFormulario();
     const conteudoTransposto: ConteudoVersao = {
@@ -480,7 +567,13 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
    * fallback pra Principal quando a Versão aberta é apagada.
    */
   const carregarConteudoNoFormulario = (conteudo: ConteudoVersao) => {
-    setFormData((prev) => ({ ...prev, tom: conteudo.tom, letraCifra: conteudo.letraCifra }));
+    setFormData((prev) => ({
+      ...prev,
+      tom: conteudo.tom,
+      letraCifra: conteudo.letraCifra,
+      videoReferencia: conteudo.videoReferencia ? urlAssistirYoutube(conteudo.videoReferencia) : "",
+      videoReferenciaSuprimida: !!conteudo.videoReferenciaSuprimida
+    }));
     const novasTablaturas = conteudo.tablaturas ?? [];
     setTablaturas(novasTablaturas);
     setTomTravado(novasTablaturas.length > 0 ? conteudo.tom : "");
@@ -548,6 +641,8 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
         tom: conteudo.tom,
         letraCifra: conteudo.letraCifra,
         tablaturas: tablaturasParaFirestore(conteudo.tablaturas ?? []),
+        videoReferencia: conteudo.videoReferencia ?? "",
+        videoReferenciaSuprimida: conteudo.videoReferenciaSuprimida ?? false,
         atualizadoEm: agora,
         atualizadoPor: autor
       });
@@ -636,6 +731,16 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
     return invalidos;
   }, [formData.letraCifra]);
+
+  // Validação dos dois campos de Vídeo de Referência (próprio da Versão e
+  // Padrão da Música) — vazio é válido, texto não-vazio precisa ser
+  // reconhecível como link do YouTube. Suprimida ignora o campo de texto.
+  // Parsing de string curta — barato o bastante pra não precisar de useMemo
+  // (mesmo critério de `tomPreviewAtual` logo abaixo).
+  const videoReferenciaProcessada = processarCampoVideo(formData.videoReferencia);
+  const videoReferenciaPadraoProcessada = processarCampoVideo(formData.videoReferenciaPadrao);
+  const videoReferenciaInvalida = !formData.videoReferenciaSuprimida && !videoReferenciaProcessada.valido;
+  const videoReferenciaPadraoInvalida = !videoReferenciaPadraoProcessada.valido;
 
   const opcoesTomPreview = useMemo(() => opcoesTransposicao(formData.tom), [formData.tom]);
   const tomPreviewAtual = transporAcorde(formData.tom, previewSemitons);
@@ -899,6 +1004,28 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             </div>
 
             <div className="md:col-span-2">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                <Youtube size={15} className="text-gray-400" />
+                Vídeo de Referência Padrão <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Vídeo do YouTube usado como referência por qualquer Versão desta Música que não tenha (nem tenha suprimido) um vídeo próprio. Independe de qual Versão é a Principal.
+              </p>
+              <input
+                type="text"
+                name="videoReferenciaPadrao"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={formData.videoReferenciaPadrao}
+                onChange={handleChange}
+                disabled={modoNovaVersao}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              {videoReferenciaPadraoInvalida && (
+                <p className="text-xs text-red-600 mt-1">Link do YouTube não reconhecido.</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Tom Original</label>
               <input
                 type="text"
@@ -908,6 +1035,38 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 onChange={handleChange}
                 className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                <Youtube size={15} className="text-gray-400" />
+                Vídeo de Referência desta Versão <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                {formData.videoReferenciaSuprimida
+                  ? "Esta Versão não vai mostrar nenhum vídeo, mesmo que a Música tenha um Vídeo de Referência Padrão."
+                  : "Sem um vídeo próprio aqui, esta Versão mostra o Vídeo de Referência Padrão da Música (se houver)."}
+              </p>
+              <input
+                type="text"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={formData.videoReferencia}
+                onChange={handleChangeVideoReferencia}
+                disabled={formData.videoReferenciaSuprimida}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              {videoReferenciaInvalida && (
+                <p className="text-xs text-red-600 mt-1">Link do YouTube não reconhecido.</p>
+              )}
+              <label className="mt-2 flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formData.videoReferenciaSuprimida}
+                  onChange={(e) => handleToggleVideoReferenciaSuprimida(e.target.checked)}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 bg-white"
+                />
+                Não mostrar nenhum vídeo nesta Versão (ignora o Padrão da Música)
+              </label>
             </div>
 
             <div className="md:col-span-2">
@@ -995,7 +1154,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
               <button
                 type="button"
                 onClick={salvarComoNovaVersao}
-                disabled={criandoVersao}
+                disabled={criandoVersao || videoReferenciaInvalida}
                 className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Save size={18} />
@@ -1004,7 +1163,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             ) : (
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || videoReferenciaInvalida || videoReferenciaPadraoInvalida}
                 className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Save size={18} />
@@ -1088,13 +1247,15 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                   <button
                     type="button"
                     onClick={salvarComoVersaoTransposta}
-                    disabled={sujo || previewSemitons === 0 || salvandoVersaoTransposta}
+                    disabled={sujo || previewSemitons === 0 || salvandoVersaoTransposta || videoReferenciaInvalida}
                     title={
                       sujo
                         ? "Salve as alterações pendentes antes"
                         : previewSemitons === 0
                           ? "Transponha o preview pra um Tom diferente antes de salvar"
-                          : "Salvar o resultado transposto como uma nova Versão"
+                          : videoReferenciaInvalida
+                            ? "Corrija o link de Vídeo de Referência antes de salvar"
+                            : "Salvar o resultado transposto como uma nova Versão"
                     }
                     className="shrink-0 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
