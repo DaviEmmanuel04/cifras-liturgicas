@@ -46,6 +46,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# docs para agentes (skills, ADRs) — não versionadas
+# docs para agentes (skills, ADRs, issue tracker local) — não versionadas
 /docs/agents/
 /docs/adr/
+/.scratch/
