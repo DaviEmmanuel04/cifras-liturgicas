@@ -58,6 +58,12 @@ describe("atualizarVersao", () => {
       videoReferenciaSuprimida: false,
     });
   });
+
+  it("atualiza o Capotraste do mesmo jeito que os demais campos de conteúdo", () => {
+    const resultado = atualizarVersao(versoes, "v1", { capotraste: 2 }, "regente@paroquia.org", "2026-08-23T12:00:00.000Z");
+
+    expect(resultado.find((v) => v.id === "v1")).toMatchObject({ capotraste: 2 });
+  });
 });
 
 describe("promoverVersaoPrincipal", () => {
@@ -83,6 +89,11 @@ describe("promoverVersaoPrincipal", () => {
       videoReferencia: "abc123",
       videoReferenciaSuprimida: false,
     });
+  });
+
+  it("inclui o Capotraste da Versão promovida — mesmo espelhamento de tom/letraCifra/tablaturas", () => {
+    const comCapotraste: Versao[] = [{ ...versoes[0] }, { ...versoes[1], capotraste: 2 }];
+    expect(promoverVersaoPrincipal(comCapotraste, "v2")).toMatchObject({ capotraste: 2 });
   });
 });
 

@@ -15,7 +15,7 @@ import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestore";
 import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
-import { opcoesTransposicao, transporAcorde, transporCifra } from "@/utils/transposicao";
+import { opcoesCapotraste, opcoesTransposicao, transporAcorde, transporCifra } from "@/utils/transposicao";
 import {
   adicionarVersao,
   atualizarVersao,
@@ -65,6 +65,10 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     categoria: "",
     tempo: "",
     tom: "",
+    // Capotraste padrão desta Versão (0 = "Sem capotraste" — ausência no
+    // Firestore é tratada como 0, nunca um terceiro estado). Ver
+    // CONTEXT.md, "Capotraste".
+    capotraste: 0,
     letraCifra: "",
     // Vídeo de Referência da Versão em edição (texto livre do campo — URL
     // colada ou id — validado e convertido em id só no momento de salvar).
@@ -135,6 +139,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
             categoria: data.categoria || "",
             tempo: data.tempo || "",
             tom: data.tom || "",
+            capotraste: typeof data.capotraste === "number" ? data.capotraste : 0,
             letraCifra: data.letraCifra || "",
             videoReferencia: data.videoReferencia ? urlAssistirYoutube(data.videoReferencia) : "",
             videoReferenciaSuprimida: !!data.videoReferenciaSuprimida,
@@ -174,6 +179,11 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setSujo(true);
+  };
+
+  const handleChangeCapotraste = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData((prev) => ({ ...prev, capotraste: Number(e.target.value) }));
     setSujo(true);
   };
 
@@ -297,6 +307,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       const editandoPrincipal = versoesExistentes.length === 0 || versaoEmEdicaoId === versaoPrincipalId;
       if (editandoPrincipal) {
         payload.tom = formData.tom;
+        payload.capotraste = formData.capotraste;
         payload.letraCifra = formData.letraCifra;
         payload.tablaturas = tablaturasParaFirestore(tablaturas);
         payload.videoReferencia = videoProprio ?? "";
@@ -314,6 +325,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
           versaoEmEdicaoId,
           {
             tom: formData.tom,
+            capotraste: formData.capotraste,
             letraCifra: formData.letraCifra,
             tablaturas,
             videoReferencia: videoProprio ?? "",
@@ -341,6 +353,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
 
   const conteudoVersaoDoFormulario = (): ConteudoVersao => ({
     tom: formData.tom,
+    capotraste: formData.capotraste,
     letraCifra: formData.letraCifra,
     tablaturas,
     videoReferencia: formData.videoReferenciaSuprimida ? undefined : videoReferenciaProcessada.id,
@@ -358,6 +371,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     setFormData(prev => ({
       ...prev,
       tom: conteudoVersaoOriginal.tom,
+      capotraste: conteudoVersaoOriginal.capotraste ?? 0,
       letraCifra: conteudoVersaoOriginal.letraCifra,
       videoReferencia: conteudoVersaoOriginal.videoReferencia ? urlAssistirYoutube(conteudoVersaoOriginal.videoReferencia) : "",
       videoReferenciaSuprimida: !!conteudoVersaoOriginal.videoReferenciaSuprimida
@@ -415,6 +429,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     const docRef = doc(db, "musicas", id);
     await updateDoc(docRef, {
       tom: conteudoAtual.tom,
+      capotraste: conteudoAtual.capotraste ?? 0,
       letraCifra: conteudoAtual.letraCifra,
       tablaturas: tablaturasParaFirestore(conteudoAtual.tablaturas ?? []),
       videoReferencia: conteudoAtual.videoReferencia ?? "",
@@ -570,6 +585,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     setFormData((prev) => ({
       ...prev,
       tom: conteudo.tom,
+      capotraste: conteudo.capotraste ?? 0,
       letraCifra: conteudo.letraCifra,
       videoReferencia: conteudo.videoReferencia ? urlAssistirYoutube(conteudo.videoReferencia) : "",
       videoReferenciaSuprimida: !!conteudo.videoReferenciaSuprimida
@@ -639,6 +655,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
       await updateDoc(doc(db, "musicas", id), {
         versaoPrincipalId: versaoId,
         tom: conteudo.tom,
+        capotraste: conteudo.capotraste ?? 0,
         letraCifra: conteudo.letraCifra,
         tablaturas: tablaturasParaFirestore(conteudo.tablaturas ?? []),
         videoReferencia: conteudo.videoReferencia ?? "",
@@ -1025,16 +1042,32 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
               )}
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tom Original</label>
-              <input
-                type="text"
-                name="tom"
-                required
-                value={formData.tom}
-                onChange={handleChange}
-                className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
-              />
+            <div className="md:col-span-2 flex flex-wrap gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tom Original</label>
+                <input
+                  type="text"
+                  name="tom"
+                  required
+                  value={formData.tom}
+                  onChange={handleChange}
+                  className="w-full md:w-40 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Capotraste padrão</label>
+                <select
+                  name="capotraste"
+                  value={formData.capotraste}
+                  onChange={handleChangeCapotraste}
+                  className="w-full md:w-44 p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
+                >
+                  {opcoesCapotraste().map((opcao) => (
+                    <option key={opcao.valor} value={opcao.valor}>{opcao.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="md:col-span-2">

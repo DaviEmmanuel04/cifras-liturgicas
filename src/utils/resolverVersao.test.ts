@@ -58,6 +58,20 @@ describe("resolverConteudoVersao", () => {
     });
   });
 
+  it("inclui o Capotraste (próprio da Música ou da Versão resolvida) do mesmo jeito que tom/letraCifra", () => {
+    const musicaComCapotraste: Musica = { ...musicaSemVersoes, capotraste: 2 };
+    expect(resolverConteudoVersao(musicaComCapotraste)).toMatchObject({ capotraste: 2 });
+
+    const musicaComVersoesECapotraste: Musica = {
+      ...musicaComVersoes,
+      versoes: [
+        { ...musicaComVersoes.versoes![0], capotraste: 3 },
+        musicaComVersoes.versoes![1],
+      ],
+    };
+    expect(resolverConteudoVersao(musicaComVersoesECapotraste)).toMatchObject({ capotraste: 3 });
+  });
+
   it("com versaoPrincipalId que não corresponde a nenhuma Versão: cai pra primeira da coleção sem erro", () => {
     const musicaComPrincipalDesalinhada: Musica = {
       ...musicaComVersoes,
