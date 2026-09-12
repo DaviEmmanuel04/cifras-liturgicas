@@ -26,10 +26,14 @@ The chord-chart representation of a Versão's lyrics: the sung text with chord s
 _Avoid_: Letra (the words alone, without chords), Partitura
 
 **Tom**:
-The musical key a Versão is written in and saved under (e.g. "C", "F#m", "Bb"). A Versão has exactly one saved reference Tom; viewing/printing can transpose the display away from it without altering the saved value. Different Versões of the same Música may have different Toms — that's how "salvar em outro tom" is modeled: it produces a new Versão, not a second Tom on one record.
+The musical key a Versão is written in and saved under (e.g. "C", "F#m", "Bb"). A Versão has exactly one saved reference Tom; viewing/printing can transpose the display away from it without altering the saved value. Different Versões of the same Música may have different Toms — that's how "salvar em outro tom" is modeled: it produces a new Versão, not a second Tom on one record. Distinct from Capotraste: Tom (plus any live transposition) is what the song sounds in; Capotraste is a separate layer on top that only changes which chord shapes are shown.
+
+**Capotraste**:
+The casa where a physical capo is clamped to play a Versão's Cifra. Purely a display transformation: the chords shown are the shape transposed down for that casa, while the Tom badge keeps reflecting the actual sounding key — Capotraste never changes what key the song sounds in, only which chord shapes are printed. A Versão has one saved default Capotraste (0 meaning none); viewing can override it live without persisting, the same way live transposition already works for Tom. Does not apply to Tablatura, and is not carried over when "salvar em outro tom" creates a new Versão.
+_Avoid_: Capo (English mixed into an otherwise Portuguese model), Casa do Capotraste (redundant — the Capotraste value already is a casa)
 
 **Diagrama de Acorde**:
-A static illustration of one chord's finger positions across the 6 cordas at a single moment — which casa to press on each corda, or which corda to leave solta or abafada. Looked up by chord symbol from the `dicionarioAcordes`, rendered by `ChordDiagram`.
+A static illustration of one chord's finger positions across the 6 cordas at a single moment — which casa to press on each corda, or which corda to leave solta or abafada. Looked up by chord symbol from the `dicionarioAcordes`, rendered by `ChordDiagram`. Always reflects the chord as currently displayed (after any transposition and Capotraste), never the underlying saved Tom.
 _Avoid_: Tablatura (a diagram is one static shape; a tablatura is a sequence of shapes over time)
 
 **Tablatura**:
@@ -65,4 +69,4 @@ A Técnica de Execução connecting a Nota to the Nota on the same corda in the 
 A Técnica de Execução marking pitch oscillation on a single Nota. Unlike Ligadura and Slide, it has no relationship to any other Nota and does not affect transposition.
 
 **Casa**:
-A fret position on the neck: an integer from 0 (corda solta) upward. Casa numbers on a Nota are always absolute — unlike `ChordShape.baseFret`, a Passo has no visual windowing.
+A fret position on the neck: an integer from 0 (corda solta) upward. Casa numbers on a Nota are always absolute — unlike `ChordShape.baseFret`, a Passo has no visual windowing. Also the unit a Capotraste is expressed in, but there it's a single value for a whole Versão's display, not a per-Nota value inside a Passo.

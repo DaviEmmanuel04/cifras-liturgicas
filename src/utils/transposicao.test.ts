@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { opcoesTransposicao, transporAcorde, transporCifra } from "./transposicao";
+import {
+  opcoesCapotraste,
+  opcoesTransposicao,
+  transporAcorde,
+  transporAcordeComCapotraste,
+  transporCifra,
+  transporCifraComCapotraste,
+} from "./transposicao";
 
 describe("transporAcorde", () => {
   it("retorna o próprio acorde quando semitons é 0", () => {
@@ -75,5 +82,60 @@ describe("opcoesTransposicao", () => {
 
   it("retorna lista vazia quando não há tom informado", () => {
     expect(opcoesTransposicao("")).toEqual([]);
+  });
+});
+
+describe("transporAcordeComCapotraste", () => {
+  it("capotraste 0 é no-op: a forma retornada é idêntica ao tom atual recebido", () => {
+    expect(transporAcordeComCapotraste("D", 0)).toBe("D");
+  });
+
+  it("rebaixa a forma pelo tanto de casas do capotraste", () => {
+    expect(transporAcordeComCapotraste("D", 2)).toBe("C");
+  });
+
+  it("compõe corretamente sobre um tom atual já transposto por semitons", () => {
+    const tomAtual = transporAcorde("C", 2); // preview de +2 semitons já aplicado
+    expect(transporAcordeComCapotraste(tomAtual, 2)).toBe("C");
+  });
+
+  it("retorna string vazia/falsy sem alterações", () => {
+    expect(transporAcordeComCapotraste("", 3)).toBe("");
+  });
+});
+
+describe("transporCifraComCapotraste", () => {
+  it("capotraste 0 é no-op: a Cifra retornada é idêntica à recebida", () => {
+    const texto = "[D] Senhor, tende [A] piedade";
+    expect(transporCifraComCapotraste(texto, 0)).toBe(texto);
+  });
+
+  it("rebaixa cada acorde reconhecido pelo tanto de casas do capotraste", () => {
+    expect(transporCifraComCapotraste("[D] Senhor, tende [A] piedade", 2)).toBe("[C] Senhor, tende [G] piedade");
+  });
+
+  it("retorna o texto inalterado quando não há nenhum acorde entre colchetes", () => {
+    const texto = "Refrão:\nSenhor, tende piedade de nós.";
+    expect(transporCifraComCapotraste(texto, 2)).toBe(texto);
+  });
+
+  it("mantém um token não reconhecido como acorde inalterado, sem quebrar o texto", () => {
+    const texto = "[Solo] [D] Glória a Deus [A]";
+    expect(transporCifraComCapotraste(texto, 2)).toBe("[Solo] [C] Glória a Deus [G]");
+  });
+});
+
+describe("opcoesCapotraste", () => {
+  it("retorna 8 opções: 'Sem capotraste' (0) até a 7ª casa", () => {
+    const opcoes = opcoesCapotraste();
+    expect(opcoes).toHaveLength(8);
+    expect(opcoes[0]).toEqual({ valor: 0, label: "Sem capotraste" });
+    expect(opcoes[7]).toEqual({ valor: 7, label: "7ª casa" });
+  });
+
+  it("numera as casas intermediárias em ordem", () => {
+    const opcoes = opcoesCapotraste();
+    expect(opcoes[1]).toEqual({ valor: 1, label: "1ª casa" });
+    expect(opcoes[3]).toEqual({ valor: 3, label: "3ª casa" });
   });
 });

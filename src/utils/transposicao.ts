@@ -77,3 +77,40 @@ export function opcoesTransposicao(tomOriginal: string): OpcaoTom[] {
 
   return opcoes;
 }
+
+/**
+ * A forma de um acorde já no tom atual (Tom salvo, considerando `semitons`
+ * da transposição ao vivo se houver) depois de aplicar `capotraste` casas —
+ * uma segunda chamada em cadeia sobre `transporAcorde`, reaproveitando a
+ * mesma lógica de transposição, não um sistema novo. Rebaixa a forma pelo
+ * tanto de casas do capotraste (um capo levanta o som, então a forma
+ * precisa ser mais grave pra soar igual); `capotraste` 0 é no-op. Ver
+ * CONTEXT.md, "Capotraste", e
+ * docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md.
+ */
+export function transporAcordeComCapotraste(acordeAtual: string, capotraste: number): string {
+  return transporAcorde(acordeAtual, -capotraste);
+}
+
+/** Equivalente a `transporAcordeComCapotraste`, mas pra uma Cifra (`letraCifra`) inteira. */
+export function transporCifraComCapotraste(cifraAtual: string, capotraste: number): string {
+  return transporCifra(cifraAtual, -capotraste);
+}
+
+/** Maior casa de Capotraste aceita pelos seletores (ver `spec.md`, Out of Scope). */
+export const CAPOTRASTE_MAXIMO = 7;
+
+export type OpcaoCapotraste = { valor: number; label: string };
+
+/**
+ * As opções de Capotraste (0 = "Sem capotraste", até `CAPOTRASTE_MAXIMO`) pro
+ * seletor padrão da Versão (formulário do admin) e pro seletor ao vivo da
+ * visualização pública — a mesma lista, reaproveitada pelos dois.
+ */
+export function opcoesCapotraste(): OpcaoCapotraste[] {
+  const opcoes: OpcaoCapotraste[] = [{ valor: 0, label: "Sem capotraste" }];
+  for (let casa = 1; casa <= CAPOTRASTE_MAXIMO; casa++) {
+    opcoes.push({ valor: casa, label: `${casa}ª casa` });
+  }
+  return opcoes;
+}

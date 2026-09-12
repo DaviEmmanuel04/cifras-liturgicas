@@ -15,6 +15,15 @@ export type Versao = {
   letraCifra: string;
   tablaturas?: SecaoTablatura[];
   /**
+   * Casa onde um capotraste físico é colocado pra tocar esta Versão (0 ou
+   * ausente = nenhum). Camada de exibição independente do Tom — só rebaixa
+   * a forma dos acordes mostrados, nunca muda o Tom que soa. Não se aplica à
+   * Tablatura, e não é copiado quando "salvar em outro tom" cria uma nova
+   * Versão. Ver CONTEXT.md, "Capotraste", e
+   * docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md.
+   */
+  capotraste?: number;
+  /**
    * Id do vídeo de referência do YouTube próprio desta Versão (ver
    * CONTEXT.md, "Vídeo de Referência"). Vazio/ausente significa que esta
    * Versão não tem vídeo próprio — nesse caso, `videoReferenciaSuprimida`
