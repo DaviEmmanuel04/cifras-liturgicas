@@ -107,7 +107,7 @@ export function acordeExibido(acordeCru: string, semitons: number, capotraste: n
   return transporAcordeComCapotraste(transporAcorde(acordeCru, semitons), capotraste);
 }
 
-/** Maior casa de Capotraste aceita pelos seletores (ver `spec.md`, Out of Scope). */
+/** Maior casa de Capotraste aceita pelos seletores. Ver CONTEXT.md, "Capotraste". */
 export const CAPOTRASTE_MAXIMO = 7;
 
 export type OpcaoCapotraste = { valor: number; label: string };
