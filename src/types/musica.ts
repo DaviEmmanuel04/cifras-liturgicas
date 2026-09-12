@@ -11,6 +11,12 @@ export type Musica = {
   letraCifra: string;
   tablaturas?: SecaoTablatura[];
   /**
+   * Espelho de `Versao.capotraste` pra Versão implícita (a Principal,
+   * enquanto `versoes` não existe) — mesmo papel de `tom` acima. Ver
+   * CONTEXT.md, "Capotraste".
+   */
+  capotraste?: number;
+  /**
    * Vídeo de Referência próprio da Versão implícita (a Principal, enquanto
    * `versoes` não existe) — mesmo papel de `tom`/`letraCifra` acima: espelha
    * o campo equivalente em `Versao` pra Música nunca depender da coleção

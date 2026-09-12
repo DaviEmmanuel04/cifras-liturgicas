@@ -9,7 +9,7 @@ import type { Versao } from "@/types/versao";
  */
 export type ConteudoVersao = Pick<
   Versao,
-  "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida"
+  "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida" | "capotraste"
 >;
 
 /**
@@ -44,6 +44,7 @@ export function resolverConteudoVersao(musica: Musica, versaoId?: string): Conte
       tablaturas: musica.tablaturas,
       videoReferencia: musica.videoReferencia,
       videoReferenciaSuprimida: musica.videoReferenciaSuprimida,
+      capotraste: musica.capotraste,
     };
   }
 
@@ -53,6 +54,7 @@ export function resolverConteudoVersao(musica: Musica, versaoId?: string): Conte
     tablaturas: versao.tablaturas,
     videoReferencia: versao.videoReferencia,
     videoReferenciaSuprimida: versao.videoReferenciaSuprimida,
+    capotraste: versao.capotraste,
   };
 }
 

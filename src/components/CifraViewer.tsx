@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
+import { opcoesCapotraste, opcoesTransposicao, tomRealComCapotraste, transporAcorde } from "@/utils/transposicao";
 import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
@@ -13,6 +13,17 @@ import { urlEmbedYoutube } from "@/utils/youtube";
 
 export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; videoReferenciaId?: string }) {
   const [semitons, setSemitons] = useState(0);
+  // Capotraste padrão salvo na Versão (0/ausente = "Sem capotraste") — o
+  // valor ao qual o reset unificado volta, não necessariamente 0. Ver
+  // CONTEXT.md, "Capotraste".
+  const capotrastePadrao = musica.capotraste ?? 0;
+  // Ajuste ao vivo do capotraste, sempre efêmero — nunca persistido nem
+  // salvo em localStorage, mesmo padrão de `semitons` acima.
+  const [capotraste, setCapotraste] = useState(capotrastePadrao);
+  const resetarAjustes = () => {
+    setSemitons(0);
+    setCapotraste(capotrastePadrao);
+  };
   // Recolhida por padrão — o player só é montado (e só então carrega) quando
   // o próprio visitante decide abrir a seção. Ver CONTEXT.md, "Vídeo de
   // Referência".
@@ -79,6 +90,10 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
   }, [isScrolling, scrollSpeed]);
 
   const tomAtual = transporAcorde(musica.tom, semitons);
+  // Tom real que soa com o capotraste ativo — só entra no badge, nunca nos
+  // acordes exibidos (texto da Cifra, Diagramas). Ver CONTEXT.md,
+  // "Capotraste", e docs/adr/0006-capotraste-como-anotacao-do-tom-exibido.md.
+  const tomReal = tomRealComCapotraste(tomAtual, capotraste);
   const temTablatura = (musica.tablaturas?.length ?? 0) > 0;
 
   const opcoesTom = useMemo(() => opcoesTransposicao(musica.tom), [musica.tom]);
@@ -98,7 +113,8 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
     return Array.from(acordesBrutos);
   }, [musica.letraCifra]);
 
-  // Transpor os acordes únicos conforme semitons
+  // Transpor os acordes únicos conforme semitons — capotraste nunca toca os
+  // acordes exibidos, só o badge de Tom (ver tomReal acima).
   const uniqueChordsTransposed = useMemo(() => {
     const transposed = uniqueChords.map(ac => transporAcorde(ac, semitons));
     return Array.from(new Set(transposed));
@@ -133,7 +149,11 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
               {musica.tempo}
             </span>
             <span className="bg-primary-50 text-primary-750 px-3 py-1.5 rounded-full font-mono font-bold transition-all">
-              Tom: {tomAtual}
+              {capotraste === 0 ? (
+                `Tom: ${tomAtual}`
+              ) : (
+                `Tom: ${tomReal} com forma de ${tomAtual} (capotraste na ${capotraste}ª casa)`
+              )}
             </span>
           </div>
         </div>
@@ -309,8 +329,8 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
 
           <CifraRenderer
             texto={musica.letraCifra}
-            semitons={semitons} 
-            somenteLetra={somenteLetra} 
+            semitons={semitons}
+            somenteLetra={somenteLetra}
             printTwoColumns={printTwoColumns}
           />
 
@@ -365,19 +385,19 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
                 ))}
               </select>
               
-              {semitons !== 0 && (
+              {(semitons !== 0 || capotraste !== capotrastePadrao) && (
                 <button
-                  onClick={() => setSemitons(0)}
+                  onClick={resetarAjustes}
                   className="mr-1 p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors text-gray-300 hover:text-white"
-                  title="Voltar para o Tom Original"
+                  title="Voltar ao Tom e Capotraste originais"
                 >
                   <RotateCcw size={12} />
                 </button>
               )}
             </div>
           ) : (
-            <button 
-              onClick={() => setSemitons(0)}
+            <button
+              onClick={resetarAjustes}
               className="px-2.5 py-1.5 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors flex items-center justify-center font-mono font-bold text-[10px] tracking-wider"
               title="Tom Original"
             >
@@ -386,7 +406,7 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
             </button>
           )}
 
-          <button 
+          <button
             onClick={() => setSemitons(s => s + 1)}
             className="p-2 hover:bg-white/10 active:bg-white/20 rounded-full transition-colors"
             title="Subir meio tom"
@@ -394,7 +414,29 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
             <Plus size={16} />
           </button>
         </div>
-        
+
+        <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-0.5 border border-white/5">
+          <span className="text-[9px] font-bold text-gray-400 pl-1 select-none">Capo</span>
+          <select
+            value={capotraste}
+            onChange={(e) => setCapotraste(Number(e.target.value))}
+            className="bg-transparent font-mono font-bold text-[10px] md:text-[11px] py-1 pl-1.5 pr-4 border-none outline-none cursor-pointer appearance-none relative select-none w-[74px] text-white"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+              backgroundPosition: 'right 2px center',
+              backgroundSize: '8px',
+              backgroundRepeat: 'no-repeat'
+            }}
+            title="Capotraste"
+          >
+            {opcoesCapotraste().map((opcao) => (
+              <option key={opcao.valor} value={opcao.valor} className="bg-gray-950 text-white font-mono text-xs">
+                {opcao.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsScrolling(!isScrolling)}

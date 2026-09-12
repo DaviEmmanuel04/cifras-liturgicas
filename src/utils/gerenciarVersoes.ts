@@ -14,7 +14,10 @@ export function atualizarVersao(
   versoes: Versao[],
   versaoId: string,
   patch: Partial<
-    Pick<Versao, "rotulo" | "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida">
+    Pick<
+      Versao,
+      "rotulo" | "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida" | "capotraste"
+    >
   >,
   autor: string,
   agora: string
@@ -41,6 +44,7 @@ export function promoverVersaoPrincipal(versoes: Versao[], versaoId: string): Co
     tablaturas: versao.tablaturas,
     videoReferencia: versao.videoReferencia,
     videoReferenciaSuprimida: versao.videoReferenciaSuprimida,
+    capotraste: versao.capotraste,
   };
 }
 

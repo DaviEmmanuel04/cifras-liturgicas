@@ -77,3 +77,36 @@ export function opcoesTransposicao(tomOriginal: string): OpcaoTom[] {
 
   return opcoes;
 }
+
+/**
+ * O Tom real que soa quando um capotraste está ativo: o tom atual (Tom
+ * salvo, considerando `semitons` da transposição ao vivo se houver)
+ * transposto pra cima pelo número de casas do capotraste — reaproveitando
+ * `transporAcorde` já existente, não um sistema de transposição novo. Um
+ * capotraste levanta o som sem mudar a forma tocada, por isso soma (nunca
+ * subtrai) as casas; `capotraste` 0 é no-op. Os acordes exibidos (texto da
+ * Cifra, Diagramas de Acorde) nunca passam por esta função — só o badge de
+ * Tom muda. Ver CONTEXT.md, "Capotraste", e
+ * docs/adr/0006-capotraste-como-anotacao-do-tom-exibido.md.
+ */
+export function tomRealComCapotraste(tomAtual: string, capotraste: number): string {
+  return transporAcorde(tomAtual, capotraste);
+}
+
+/** Maior casa de Capotraste aceita pelos seletores. Ver CONTEXT.md, "Capotraste". */
+export const CAPOTRASTE_MAXIMO = 7;
+
+export type OpcaoCapotraste = { valor: number; label: string };
+
+/**
+ * As opções de Capotraste (0 = "Sem capotraste", até `CAPOTRASTE_MAXIMO`) pro
+ * seletor padrão da Versão (formulário do admin) e pro seletor ao vivo da
+ * visualização pública — a mesma lista, reaproveitada pelos dois.
+ */
+export function opcoesCapotraste(): OpcaoCapotraste[] {
+  const opcoes: OpcaoCapotraste[] = [{ valor: 0, label: "Sem capotraste" }];
+  for (let casa = 1; casa <= CAPOTRASTE_MAXIMO; casa++) {
+    opcoes.push({ valor: casa, label: `${casa}ª casa` });
+  }
+  return opcoes;
+}

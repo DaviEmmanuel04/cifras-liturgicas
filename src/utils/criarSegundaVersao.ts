@@ -1,5 +1,6 @@
 import { generateId } from "@/utils/cifraParser";
 import type { ConteudoVersao } from "@/utils/resolverVersao";
+import { transporAcorde, transporCifra } from "@/utils/transposicao";
 import type { Versao } from "@/types/versao";
 
 export type CriarSegundaVersaoParams = {
@@ -52,5 +53,25 @@ export function criarSegundaVersao(params: CriarSegundaVersaoParams): CriarSegun
   return {
     versoes: [versaoExistente, versaoNova],
     versaoPrincipalId: versaoExistente.id,
+  };
+}
+
+/**
+ * Conteúdo de uma Versão nova a partir do preview transposto do fluxo
+ * "salvar em outro tom": Tom e Cifra reescritos por `semitons`
+ * (`transporAcorde`/`transporCifra`), Tablatura copiada sem alteração de
+ * casas (deslocar fret automaticamente quebra em cordas soltas — ver
+ * docs/adr/0003-versao-como-array-embutido-com-backfill-preguicoso.md).
+ * Nunca herda o Capotraste de `conteudoAtual` — a Versão nova nasce sem
+ * capotraste definido, decisão independente da Versão de origem, mesmo que
+ * ela tenha um definido (ver
+ * docs/adr/0005-capotraste-como-camada-independente-de-exibicao.md).
+ * Pura — não depende de Firestore nem de UI.
+ */
+export function conteudoVersaoTransposta(conteudoAtual: ConteudoVersao, semitons: number): ConteudoVersao {
+  return {
+    tom: transporAcorde(conteudoAtual.tom, semitons),
+    letraCifra: transporCifra(conteudoAtual.letraCifra, semitons),
+    tablaturas: conteudoAtual.tablaturas,
   };
 }

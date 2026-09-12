@@ -1,12 +1,12 @@
 import { transporAcorde } from "@/utils/transposicao";
 
-export function CifraRenderer({ 
-  texto, 
+export function CifraRenderer({
+  texto,
   semitons = 0,
   somenteLetra = false,
   printTwoColumns = false
-}: { 
-  texto: string; 
+}: {
+  texto: string;
   semitons?: number;
   somenteLetra?: boolean;
   printTwoColumns?: boolean;

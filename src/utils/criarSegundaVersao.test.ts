@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { criarSegundaVersao } from "./criarSegundaVersao";
+import { conteudoVersaoTransposta, criarSegundaVersao } from "./criarSegundaVersao";
 
 describe("criarSegundaVersao", () => {
   const conteudoAtual = { tom: "C", letraCifra: "[C] Letra original", tablaturas: undefined };
@@ -106,5 +106,29 @@ describe("criarSegundaVersao", () => {
     const [versaoExistente, versaoNova] = resultado.versoes;
     expect(versaoExistente.videoReferencia).toBe("video-original");
     expect(versaoNova.videoReferenciaSuprimida).toBe(true);
+  });
+});
+
+describe("conteudoVersaoTransposta", () => {
+  it("reescreve Tom e Cifra pelos semitons informados", () => {
+    const resultado = conteudoVersaoTransposta({ tom: "C", letraCifra: "[C] Letra original" }, 2);
+    expect(resultado).toMatchObject({ tom: "D", letraCifra: "[D] Letra original" });
+  });
+
+  it("copia a Tablatura sem alterar casas (ADR 0003)", () => {
+    const secoes = [{ id: "s1", nome: "Intro", passos: [] }];
+    const resultado = conteudoVersaoTransposta({ tom: "C", letraCifra: "[C] Letra", tablaturas: secoes }, 2);
+    expect(resultado.tablaturas).toBe(secoes);
+  });
+
+  it("nunca herda o Capotraste da Versão de origem, mesmo quando ela tem um definido", () => {
+    const resultado = conteudoVersaoTransposta({ tom: "C", letraCifra: "[C] Letra", capotraste: 2 }, 2);
+    expect(resultado.capotraste).toBeUndefined();
+  });
+
+  it("semitons 0 ainda assim não herda o Capotraste da Versão de origem", () => {
+    const resultado = conteudoVersaoTransposta({ tom: "C", letraCifra: "[C] Letra", capotraste: 5 }, 0);
+    expect(resultado).toMatchObject({ tom: "C", letraCifra: "[C] Letra" });
+    expect(resultado.capotraste).toBeUndefined();
   });
 });
