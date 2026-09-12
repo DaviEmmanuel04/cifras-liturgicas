@@ -92,4 +92,19 @@ describe("criarSegundaVersao", () => {
     expect(versaoExistente.tablaturas).toBe(secoes);
     expect(versaoNova.tablaturas).toBeUndefined();
   });
+
+  it("carrega o Vídeo de Referência (próprio ou suprimido) de cada Versão a partir do respectivo conteúdo", () => {
+    const resultado = criarSegundaVersao({
+      conteudoAtual: { ...conteudoAtual, videoReferencia: "video-original" },
+      conteudoNovo: { ...conteudoNovo, videoReferenciaSuprimida: true },
+      rotuloVersaoExistente: "Completa",
+      rotuloVersaoNova: "Simplificada",
+      autor: "regente@paroquia.org",
+      agora: "2026-08-23T10:00:00.000Z",
+    });
+
+    const [versaoExistente, versaoNova] = resultado.versoes;
+    expect(versaoExistente.videoReferencia).toBe("video-original");
+    expect(versaoNova.videoReferenciaSuprimida).toBe(true);
+  });
 });

@@ -7,7 +7,10 @@ import type { Versao } from "@/types/versao";
  * equivalentes de topo da própria Música, quando a coleção de Versões ainda
  * não existe).
  */
-export type ConteudoVersao = Pick<Versao, "tom" | "letraCifra" | "tablaturas">;
+export type ConteudoVersao = Pick<
+  Versao,
+  "tom" | "letraCifra" | "tablaturas" | "videoReferencia" | "videoReferenciaSuprimida"
+>;
 
 /**
  * Decide qual conteúdo mostrar pra uma Música, dado um identificador de
@@ -35,10 +38,38 @@ function resolverVersaoEfetiva(musica: Musica, versaoId?: string): Versao | unde
 export function resolverConteudoVersao(musica: Musica, versaoId?: string): ConteudoVersao {
   const versao = resolverVersaoEfetiva(musica, versaoId);
   if (!versao) {
-    return { tom: musica.tom, letraCifra: musica.letraCifra, tablaturas: musica.tablaturas };
+    return {
+      tom: musica.tom,
+      letraCifra: musica.letraCifra,
+      tablaturas: musica.tablaturas,
+      videoReferencia: musica.videoReferencia,
+      videoReferenciaSuprimida: musica.videoReferenciaSuprimida,
+    };
   }
 
-  return { tom: versao.tom, letraCifra: versao.letraCifra, tablaturas: versao.tablaturas };
+  return {
+    tom: versao.tom,
+    letraCifra: versao.letraCifra,
+    tablaturas: versao.tablaturas,
+    videoReferencia: versao.videoReferencia,
+    videoReferenciaSuprimida: versao.videoReferenciaSuprimida,
+  };
+}
+
+/**
+ * Vídeo de Referência efetivamente exibido pra Música/Versão dada: o próprio
+ * da Versão resolvida (ou da implícita, sem `versaoId`), se houver; nenhum,
+ * se ela suprimiu explicitamente o padrão; senão, o Vídeo de Referência
+ * Padrão da Música. Ver CONTEXT.md, "Vídeo de Referência" e "Vídeo de
+ * Referência Padrão".
+ *
+ * Pura — não depende de Firestore nem de UI.
+ */
+export function resolverVideoReferencia(musica: Musica, versaoId?: string): string | undefined {
+  const conteudo = resolverConteudoVersao(musica, versaoId);
+  if (conteudo.videoReferencia) return conteudo.videoReferencia;
+  if (conteudo.videoReferenciaSuprimida) return undefined;
+  return musica.videoReferenciaPadrao;
 }
 
 /**

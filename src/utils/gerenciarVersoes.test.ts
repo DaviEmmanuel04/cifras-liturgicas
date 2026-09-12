@@ -43,6 +43,21 @@ describe("atualizarVersao", () => {
       tablaturas: secoes,
     });
   });
+
+  it("atualiza o Vídeo de Referência (próprio e supressão) do mesmo jeito que os demais campos de conteúdo", () => {
+    const resultado = atualizarVersao(
+      versoes,
+      "v1",
+      { videoReferencia: "abc123", videoReferenciaSuprimida: false },
+      "regente@paroquia.org",
+      "2026-08-23T12:00:00.000Z"
+    );
+
+    expect(resultado.find((v) => v.id === "v1")).toMatchObject({
+      videoReferencia: "abc123",
+      videoReferenciaSuprimida: false,
+    });
+  });
 });
 
 describe("promoverVersaoPrincipal", () => {
@@ -56,6 +71,18 @@ describe("promoverVersaoPrincipal", () => {
 
   it("lança erro se o id não corresponder a nenhuma Versão existente", () => {
     expect(() => promoverVersaoPrincipal(versoes, "v-inexistente")).toThrow();
+  });
+
+  it("inclui o Vídeo de Referência (próprio e supressão) da Versão promovida — mesmo espelhamento de tom/letraCifra/tablaturas", () => {
+    const comVideo: Versao[] = [
+      { ...versoes[0] },
+      { ...versoes[1], videoReferencia: "abc123", videoReferenciaSuprimida: false },
+    ];
+
+    expect(promoverVersaoPrincipal(comVideo, "v2")).toMatchObject({
+      videoReferencia: "abc123",
+      videoReferenciaSuprimida: false,
+    });
   });
 });
 

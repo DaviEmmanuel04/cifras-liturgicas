@@ -2,16 +2,21 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
-import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
 import { TablaturaViewer } from "./TablaturaViewer";
 import Image from "next/image";
 import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { Musica } from "@/types/musica";
+import { urlEmbedYoutube } from "@/utils/youtube";
 
-export function CifraViewer({ musica }: { musica: Musica }) {
+export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; videoReferenciaId?: string }) {
   const [semitons, setSemitons] = useState(0);
+  // Recolhida por padrão — o player só é montado (e só então carrega) quando
+  // o próprio visitante decide abrir a seção. Ver CONTEXT.md, "Vídeo de
+  // Referência".
+  const [mostrarVideo, setMostrarVideo] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("cifras-liturgicas:font-size");
@@ -132,6 +137,36 @@ export function CifraViewer({ musica }: { musica: Musica }) {
             </span>
           </div>
         </div>
+
+        {/* Vídeo de Referência — retrátil, recolhida por padrão (ver CONTEXT.md) */}
+        {videoReferenciaId && (
+          <div className="print:hidden border-b border-gray-150/70 bg-white">
+            <button
+              onClick={() => setMostrarVideo(!mostrarVideo)}
+              className="w-full px-5 py-2.5 bg-gray-50/50 flex items-center justify-between border-b border-gray-100 text-xs font-bold text-gray-600 hover:text-primary-750 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Youtube size={14} />
+                Vídeo de Referência
+              </span>
+              {mostrarVideo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {mostrarVideo && (
+              <div className="py-4 px-6 bg-[#fbfaf7]/30">
+                <div className="relative w-full max-w-2xl mx-auto aspect-video rounded-xl overflow-hidden shadow-sm">
+                  <iframe
+                    src={urlEmbedYoutube(videoReferenciaId)}
+                    title="Vídeo de Referência"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full border-0"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Painel de Controle de Visualização e Impressão (Sempre visível na tela) */}
         <div className="print:hidden border-b border-gray-150/70 bg-gray-50/40 p-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4 md:gap-6">

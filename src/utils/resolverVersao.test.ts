@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverConteudoVersao, resolverVersaoIdEfetivo } from "./resolverVersao";
+import { resolverConteudoVersao, resolverVersaoIdEfetivo, resolverVideoReferencia } from "./resolverVersao";
 import type { Musica } from "@/types/musica";
 
 const musicaSemVersoes: Musica = {
@@ -87,5 +87,52 @@ describe("resolverVersaoIdEfetivo", () => {
 
   it("com versaoId que não existe mais: retorna o id da Principal", () => {
     expect(resolverVersaoIdEfetivo(musicaComVersoes, "v-apagada")).toBe("v1");
+  });
+});
+
+describe("resolverVideoReferencia", () => {
+  it("sem Vídeo de Referência Padrão e sem Versões: nenhum vídeo", () => {
+    expect(resolverVideoReferencia(musicaSemVersoes)).toBeUndefined();
+  });
+
+  it("sem vídeo próprio: cai pro Vídeo de Referência Padrão da Música", () => {
+    const musica: Musica = { ...musicaSemVersoes, videoReferenciaPadrao: "padrao123" };
+    expect(resolverVideoReferencia(musica)).toBe("padrao123");
+  });
+
+  it("Versão com vídeo próprio: usa o da Versão, não o padrão", () => {
+    const musica: Musica = {
+      ...musicaComVersoes,
+      videoReferenciaPadrao: "padrao123",
+      versoes: [
+        { ...musicaComVersoes.versoes![0], videoReferencia: "proprioV1" },
+        musicaComVersoes.versoes![1],
+      ],
+    };
+    expect(resolverVideoReferencia(musica)).toBe("proprioV1");
+  });
+
+  it("Versão sem vídeo próprio, mas com coleção de Versões: cai pro padrão da Música — independente de qual é a Principal", () => {
+    const musica: Musica = { ...musicaComVersoes, videoReferenciaPadrao: "padrao123" };
+    expect(resolverVideoReferencia(musica, "v2")).toBe("padrao123");
+  });
+
+  it("Versão que suprime explicitamente: nenhum vídeo, mesmo havendo padrão", () => {
+    const musica: Musica = {
+      ...musicaComVersoes,
+      videoReferenciaPadrao: "padrao123",
+      versoes: [
+        { ...musicaComVersoes.versoes![0], videoReferenciaSuprimida: true },
+        musicaComVersoes.versoes![1],
+      ],
+    };
+    expect(resolverVideoReferencia(musica)).toBeUndefined();
+  });
+
+  it("promover outra Versão a Principal não muda o padrão herdado por quem não tem vídeo próprio", () => {
+    const musica: Musica = { ...musicaComVersoes, videoReferenciaPadrao: "padrao123" };
+    const comOutraPrincipal: Musica = { ...musica, versaoPrincipalId: "v2" };
+    expect(resolverVideoReferencia(musica)).toBe("padrao123");
+    expect(resolverVideoReferencia(comOutraPrincipal)).toBe("padrao123");
   });
 });
