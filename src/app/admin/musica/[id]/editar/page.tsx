@@ -14,8 +14,8 @@ import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasDeFirestore, tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore, versoesParaFirestore } from "@/utils/versaoFirestore";
-import { criarSegundaVersao } from "@/utils/criarSegundaVersao";
-import { opcoesCapotraste, opcoesTransposicao, transporAcorde, transporCifra } from "@/utils/transposicao";
+import { conteudoVersaoTransposta, criarSegundaVersao } from "@/utils/criarSegundaVersao";
+import { opcoesCapotraste, opcoesTransposicao, transporAcorde } from "@/utils/transposicao";
 import {
   adicionarVersao,
   atualizarVersao,
@@ -526,11 +526,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
     }
 
     const conteudoAtual = conteudoVersaoDoFormulario();
-    const conteudoTransposto: ConteudoVersao = {
-      tom: transporAcorde(conteudoAtual.tom, previewSemitons),
-      letraCifra: transporCifra(conteudoAtual.letraCifra, previewSemitons),
-      tablaturas: conteudoAtual.tablaturas
-    };
+    const conteudoTransposto = conteudoVersaoTransposta(conteudoAtual, previewSemitons);
 
     if (versoesExistentes.length === 0) {
       const rotulos = pedirRotulosNovaVersao("Rótulo da nova Versão (neste Tom transposto):");
