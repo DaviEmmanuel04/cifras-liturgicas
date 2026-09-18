@@ -3,18 +3,25 @@ import { transporAcorde } from "@/utils/transposicao";
 export function CifraRenderer({
   texto,
   semitons = 0,
-  somenteLetra = false,
-  printTwoColumns = false
+  somenteLetra = false
 }: {
   texto: string;
   semitons?: number;
   somenteLetra?: boolean;
-  printTwoColumns?: boolean;
 }) {
   const linhas = texto.split('\n');
 
   return (
-    <div className={`font-sans ${printTwoColumns ? "print-columns-2" : ""}`}>
+    <div className="font-sans">
+      {/*
+        Sem wrapper de colunas aqui de propósito: pra impressão em duas
+        colunas balancear certo, o conteúdo de impressão que vem *depois*
+        da letra (Diagramas de Acordes) precisa participar do mesmo fluxo
+        de colunas — senão ele fica de fora, como um bloco à parte após a
+        letra, e pode sobrar sozinho numa página nova quase em branco. Quem
+        decide se entra em colunas é o chamador (CifraViewer), que envolve
+        este componente junto com esse conteúdo extra.
+      */}
       {linhas.map((linha, indexLinha) => {
         const linhaTrim = linha.trim();
         

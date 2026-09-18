@@ -120,7 +120,13 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
     return Array.from(new Set(transposed));
   }, [uniqueChords, semitons]);
   return (
-    <div className="pb-20 md:pb-32">
+    // `print:pb-0` — este espaço só existe pra não deixar a barra flutuante
+    // (print:hidden) cobrir o fim do conteúdo na tela; na impressão ela some
+    // e o espaço reservado sobra como rodapé em branco. Isolado, ele nunca
+    // rendeu uma página extra sozinho, mas soma-se à folha quase em branco
+    // do bug dos Diagramas de Acordes (ver comentário abaixo) quando os
+    // dois coincidem — por isso zerado aqui, mesmo tendo causa própria.
+    <div className="pb-20 md:pb-32 print:pb-0">
       <div id="cifra-content" className="relative">
         <div className="relative z-10 bg-white p-4 md:p-8 rounded-t-2xl border-b border-gray-250/60 shadow-sm print-clean">
           <div className="flex justify-between items-start gap-4">
@@ -327,26 +333,40 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
             </div>
           )}
 
-          <CifraRenderer
-            texto={musica.letraCifra}
-            semitons={semitons}
-            somenteLetra={somenteLetra}
-            printTwoColumns={printTwoColumns}
-          />
+          {/*
+            Letra e Diagramas de impressão precisam estar dentro do MESMO
+            container de colunas — senão os Diagramas ficam de fora do
+            balanceamento das colunas, como um bloco à parte logo após a
+            letra. Quando a letra sozinha já preenche quase uma folha
+            inteira, esse bloco final não cabe mais no que sobrou e é
+            empurrado pra uma folha nova só pra ele: a folha "em branco"
+            que sobra por baixo dele. Dentro do mesmo container, o
+            balanceamento conta a altura dos Diagramas junto com a da letra
+            desde o início, então ou os dois cabem juntos na mesma folha,
+            ou o excesso vira conteúdo normal na folha seguinte — nunca uma
+            folha isolada quase vazia.
+          */}
+          <div className={printTwoColumns ? "print-columns-2" : undefined}>
+            <CifraRenderer
+              texto={musica.letraCifra}
+              semitons={semitons}
+              somenteLetra={somenteLetra}
+            />
 
-          {/* Diagramas no final para impressão */}
-          {printDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
-            <div className="hidden print:block mt-12 border-t border-gray-300 pt-6">
-              <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider text-center">
-                Diagramas dos Acordes
-              </h4>
-              <div className="flex flex-wrap justify-center gap-6">
-                {uniqueChordsTransposed.map((acorde) => (
-                  <ChordDiagram key={acorde} nome={acorde} />
-                ))}
+            {/* Diagramas no final para impressão */}
+            {printDiagrams && !somenteLetra && uniqueChordsTransposed.length > 0 && (
+              <div className="hidden print:block mt-12 border-t border-gray-300 pt-6 break-inside-avoid">
+                <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider text-center">
+                  Diagramas dos Acordes
+                </h4>
+                <div className="flex flex-wrap justify-center gap-6">
+                  {uniqueChordsTransposed.map((acorde) => (
+                    <ChordDiagram key={acorde} nome={acorde} />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
