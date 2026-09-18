@@ -1,8 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { CifraViewer } from '@/components/CifraViewer';
-import { VersaoSelector } from '@/components/VersaoSelector';
+import { CifraPagina } from '@/components/CifraPagina';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Suspense, useState, useEffect, use } from 'react';
@@ -10,7 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Musica } from '@/types/musica';
 import { tablaturasDeFirestore } from '@/utils/tablaturaFirestore';
 import { versoesDeFirestore } from '@/utils/versaoFirestore';
-import { resolverConteudoVersao, resolverVersaoIdEfetivo, resolverVideoReferencia } from '@/utils/resolverVersao';
+import { resolverVersaoIdEfetivo } from '@/utils/resolverVersao';
 
 export default function MusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -104,18 +103,6 @@ function MusicaPageConteudo({ id }: { id: string }) {
     );
   }
 
-  const conteudo = resolverConteudoVersao(musica, versaoIdNaUrl);
-  const versaoSelecionadaId = resolverVersaoIdEfetivo(musica, versaoIdNaUrl);
-  const musicaExibida: Musica = { ...musica, ...conteudo };
-  // Resolvido a partir da Música original (não de `musicaExibida`) porque
-  // depende também de `videoReferenciaPadrao`, que não é conteúdo de Versão
-  // e por isso não está em `conteudo` — ver CONTEXT.md, "Vídeo de Referência".
-  const videoReferenciaId = resolverVideoReferencia(musica, versaoIdNaUrl);
-  // `versoes` só existe a partir da segunda Versão criada (ADR 0003) — sua
-  // mera presença já implica 2+, mesmo padrão de `versoesExistentes.length >
-  // 0` usado na tela de admin.
-  const temMultiplasVersoes = (musica.versoes?.length ?? 0) > 0;
-
   const handleSelecionarVersao = (novoVersaoId: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('versao', novoVersaoId);
@@ -123,29 +110,18 @@ function MusicaPageConteudo({ id }: { id: string }) {
   };
 
   return (
-    <main className="p-3 md:p-6">
-      <div className="max-w-3xl mx-auto">
+    <CifraPagina
+      musica={musica}
+      versaoId={versaoIdNaUrl}
+      onSelecionarVersao={handleSelecionarVersao}
+      voltar={
         <Link
           href="/"
           className="print:hidden inline-block mb-6 text-primary-700 hover:text-primary-900 font-semibold transition-colors"
         >
           &larr; Voltar para a lista
         </Link>
-
-        {temMultiplasVersoes && (
-          <VersaoSelector
-            versoes={musica.versoes!}
-            versaoPrincipalId={musica.versaoPrincipalId}
-            versaoSelecionadaId={versaoSelecionadaId}
-            onSelecionar={handleSelecionarVersao}
-          />
-        )}
-
-        {/* `key` força remontar ao trocar de Versão: o Tom transposto ao vivo
-            (estado interno do CifraViewer) é sempre relativo à Versão atual —
-            sem isto, o offset de uma Versão vazaria pro Tom salvo da próxima. */}
-        <CifraViewer key={versaoSelecionadaId ?? musica.id} musica={musicaExibida} videoReferenciaId={videoReferenciaId} />
-      </div>
-    </main>
+      }
+    />
   );
 }

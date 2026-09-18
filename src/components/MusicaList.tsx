@@ -11,7 +11,7 @@ import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
 import { resolverConteudoVersao } from "@/utils/resolverVersao";
 import type { Musica } from "@/types/musica";
-import { CifraViewer } from "./CifraViewer";
+import { CifraPagina } from "./CifraPagina";
 
 type Repertorio = {
   id: string;
@@ -120,14 +120,11 @@ export function MusicaList() {
     window.scrollTo(0, 0);
   }, [selectedMusicaId]);
 
+  // A Música original, sem resolver — quem resolve a Versão exibida (e o
+  // Vídeo de Referência, que depende de campo de topo) é a CifraPagina.
   const selectedMusica = useMemo(() => {
-    const musica = musicas.find(m => m.id === selectedMusicaId);
-    if (!musica) return null;
-    // Mesmo ponto único de resolução do ticket 1 — cai pra Principal sem
-    // versaoId, ou se o id não corresponder a nenhuma Versão existente.
-    const conteudo = resolverConteudoVersao(musica, selectedVersaoId ?? undefined);
-    return { ...musica, ...conteudo };
-  }, [musicas, selectedMusicaId, selectedVersaoId]);
+    return musicas.find(m => m.id === selectedMusicaId) ?? null;
+  }, [musicas, selectedMusicaId]);
 
   const handleMusicaClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string, versaoId?: string) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -141,6 +138,17 @@ export function MusicaList() {
     else params.delete("versao");
     const query = params.toString();
     window.history.pushState(null, "", `/musica/${id}${query ? `?${query}` : ""}`);
+  };
+
+  const handleSelecionarVersao = (versaoId: string) => {
+    setSelectedVersaoId(versaoId);
+
+    // Mesmo tratamento de URL do handleMusicaClick: preserva os filtros e
+    // reflete a Versão escolhida, mantendo o endereço compartilhável.
+    const params = new URLSearchParams(window.location.search);
+    params.set("versao", versaoId);
+    const query = params.toString();
+    window.history.pushState(null, "", `/musica/${selectedMusicaId}${query ? `?${query}` : ""}`);
   };
 
   const handleBackToList = (e?: React.MouseEvent) => {
@@ -286,21 +294,19 @@ export function MusicaList() {
     }
 
     return (
-      <main className="p-3 md:p-6">
-        <div className="max-w-3xl mx-auto">
-          <button 
+      <CifraPagina
+        musica={selectedMusica}
+        versaoId={selectedVersaoId ?? undefined}
+        onSelecionarVersao={handleSelecionarVersao}
+        voltar={
+          <button
             onClick={handleBackToList}
             className="print:hidden inline-block mb-6 text-primary-700 hover:text-primary-950 font-semibold transition-colors cursor-pointer bg-transparent border-none outline-none"
           >
             &larr; Voltar para a lista
           </button>
-
-          {/* `key` força remontar ao trocar de Versão/Música: o Tom
-              transposto ao vivo (estado interno do CifraViewer) é sempre
-              relativo à Versão atual exibida. */}
-          <CifraViewer key={`${selectedMusica.id}:${selectedVersaoId ?? ""}`} musica={selectedMusica} />
-        </div>
-      </main>
+        }
+      />
     );
   }
 
