@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { opcoesCapotraste, opcoesTransposicao, tomRealComCapotraste, transporAcorde } from "@/utils/transposicao";
-import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube } from "lucide-react";
+import { Minus, Plus, RotateCcw, Play, Pause, Printer, ChevronDown, ChevronUp, Youtube, Share2, Check } from "lucide-react";
 import { CifraRenderer } from "./CifraRenderer";
 import { ChordDiagram } from "./ChordDiagram";
 import { TablaturaViewer } from "./TablaturaViewer";
@@ -46,7 +46,39 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
   const [printTablatura, setPrintTablatura] = useState(false);
   const [printTwoColumns, setPrintTwoColumns] = useState(true);
   const [somenteLetra, setSomenteLetra] = useState(false);
-  
+  const [linkCopiado, setLinkCopiado] = useState(false);
+
+  // `window.location.href` já reflete a Versão selecionada: tanto a rota
+  // `/musica/[id]` quanto o caminho embutido na lista (MusicaList) mantêm a
+  // URL atualizada via pushState/router, então não há necessidade de receber
+  // o link como prop aqui.
+  const copiarParaClipboard = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2000);
+    } catch {
+      // Sem permissão de clipboard — não há mais nada a oferecer.
+    }
+  };
+
+  const handleCompartilhar = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: musica.titulo, url });
+      } catch (erro) {
+        // AbortError = usuário cancelou o compartilhamento nativo, nada a fazer.
+        // Qualquer outro erro (ex. falha do sistema) cai pro fallback de cópia.
+        if (erro instanceof Error && erro.name !== "AbortError") {
+          await copiarParaClipboard(url);
+        }
+      }
+      return;
+    }
+    await copiarParaClipboard(url);
+  };
+
   const lastTimeRef = useRef<number>(0);
   const scrollAccumulatorRef = useRef<number>(0);
 
@@ -265,7 +297,18 @@ export function CifraViewer({ musica, videoReferenciaId }: { musica: Musica; vid
             </label>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            {/* Botão de Compartilhar — essencial no PWA instalado (`display: fullscreen`
+                no manifest), onde não há barra de endereço pra copiar o link. */}
+            <button
+              onClick={handleCompartilhar}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-250 hover:bg-gray-50 text-gray-700 rounded-lg text-[10px] font-bold shadow-sm transition-colors cursor-pointer active:bg-gray-100"
+              title="Compartilhar"
+            >
+              {linkCopiado ? <Check size={13} /> : <Share2 size={13} />}
+              <span>{linkCopiado ? "Link copiado!" : "Compartilhar"}</span>
+            </button>
+
             {/* Botão de Imprimir */}
             <button
               onClick={() => window.print()}
