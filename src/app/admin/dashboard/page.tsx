@@ -12,6 +12,7 @@ import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { useLiturgicalTheme, LiturgicalThemeMode } from "@/components/LiturgicalThemeProvider";
 import { Musica } from "@/types/musica";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
+import { correspondeBusca } from "@/utils/busca";
 
 const colorOptions = [
   { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 border-[#d4cdbd] font-bold" },
@@ -88,10 +89,7 @@ export default function DashboardPage() {
 
   const musicasFiltradas = useMemo(() => {
     let filtradas = musicas.filter(m => {
-      const matchBusca = m.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-        (m.artista && m.artista.toLowerCase().includes(busca.toLowerCase())) ||
-        m.categoria.toLowerCase().includes(busca.toLowerCase()) ||
-        m.tempo.toLowerCase().includes(busca.toLowerCase());
+      const matchBusca = correspondeBusca(busca, m.titulo, m.artista, m.categoria, m.tempo);
       const matchCategoria = categoriaFilter ? m.categoria === categoriaFilter : true;
       const matchTempo = tempoFilter ? m.tempo === tempoFilter : true;
       return matchBusca && matchCategoria && matchTempo;

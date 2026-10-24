@@ -10,6 +10,7 @@ import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
 import { resolverConteudoVersao } from "@/utils/resolverVersao";
+import { correspondeBusca } from "@/utils/busca";
 import type { Musica } from "@/types/musica";
 import { CifraPagina } from "./CifraPagina";
 
@@ -233,7 +234,7 @@ export function MusicaList() {
 
   const musicasFiltradas = useMemo(() => {
     const filtradas = musicas.filter((m) => {
-      const matchBusca = m.titulo.toLowerCase().includes(busca.toLowerCase());
+      const matchBusca = correspondeBusca(busca, m.titulo);
       const matchCategoria = categoria ? m.categoria === categoria : true;
       const matchTempo = tempo ? m.tempo === tempo : true;
       return matchBusca && matchCategoria && matchTempo;
