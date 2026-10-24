@@ -27,6 +27,8 @@ import {
 import type { ConteudoVersao } from "@/utils/resolverVersao";
 import type { Versao } from "@/types/versao";
 import { extrairIdYoutube, urlAssistirYoutube } from "@/utils/youtube";
+import { useCategorias } from "@/lib/categorias";
+import { opcoesDeCategoria } from "@/utils/categorias";
 
 /** Sugestão inicial (editável) pro rótulo da Versão que já existia, ao criar a segunda Versão de uma Música. */
 const ROTULO_SUGERIDO_VERSAO_EXISTENTE = "Original";
@@ -44,13 +46,13 @@ const processarCampoVideo = (texto: string): { id?: string; valido: boolean } =>
   return { id, valido: id !== undefined };
 };
 
-const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 
 export default function EditarMusicaPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
   
+  const categorias = useCategorias();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -997,7 +999,7 @@ export default function EditarMusicaPage({ params }: { params: Promise<{ id: str
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="" disabled>Selecione uma categoria</option>
-                {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+                {opcoesDeCategoria(categorias, formData.categoria).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 

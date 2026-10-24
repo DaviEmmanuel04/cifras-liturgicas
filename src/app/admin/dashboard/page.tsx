@@ -13,6 +13,8 @@ import { useLiturgicalTheme, LiturgicalThemeMode } from "@/components/Liturgical
 import { Musica } from "@/types/musica";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
 import { correspondeBusca } from "@/utils/busca";
+import { useCategorias } from "@/lib/categorias";
+import { CategoriaManager } from "@/components/CategoriaManager";
 
 const colorOptions = [
   { value: "auto", label: "Automático (API)", bgClass: "bg-[#e4ded0] hover:bg-[#d4cdbd] text-gray-800 border-[#d4cdbd] font-bold" },
@@ -25,11 +27,11 @@ const colorOptions = [
   { value: "black", label: "Fiéis Defuntos (Preto)", bgClass: "bg-[#1f1f1f] text-white border-transparent" },
 ];
 
-const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 
 export default function DashboardPage() {
   const { mode, setMode } = useLiturgicalTheme();
+  const categorias = useCategorias();
   const [musicas, setMusicas] = useState<Musica[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
@@ -207,6 +209,8 @@ export default function DashboardPage() {
       {!loading && musicas.length > 0 && (
         <RepertorioManager musicas={musicas} />
       )}
+
+      {!loading && <CategoriaManager musicas={musicas} />}
 
       {/* Barra de Busca e Filtros */}
       <div className="mt-8 mb-4">

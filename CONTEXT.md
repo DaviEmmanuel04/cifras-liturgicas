@@ -8,6 +8,9 @@ Domain for cataloguing and displaying liturgical song chord charts: lyrics with 
 The identity record for one liturgical song: title, artist, liturgical season (`tempo`), category, and audit metadata. Holds one or more Versões; exactly one is the Versão Principal. Stored in the `musicas` Firestore collection.
 _Avoid_: Song, Cifra (a Música is the identity; Cifra is content that belongs to a Versão — see below)
 
+**Categoria**:
+The liturgical moment a Música is sung at (Entrada, Glória, Comunhão…). The admin maintains the list and its order (the order of the Mass, used wherever categories are listed) in the `config/categorias` Firestore document; until that document exists, a built-in default list applies. A Música stores its Categoria by name, so a Categoria cannot be deleted while any Música uses it.
+
 **Versão**:
 One complete, independently-editable rendition of a Música's content: its own Tom, Cifra, and Tablatura. Created either as a duplicate-then-edit of an existing Versão (e.g. a lyric variation for a different day, a simplified arrangement) or by capturing a live-transposed view under a new Tom. Content is a snapshot at creation time — editing one Versão never changes another. Identified to the admin by a free-text `rótulo` (e.g. "Completa", "Simplificada", "Tom do Coral da Manhã"); has no other required structure.
 _Avoid_: Arranjo, Variação (fine informally, not as the modeled term)

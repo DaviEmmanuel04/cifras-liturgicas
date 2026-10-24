@@ -11,6 +11,8 @@ import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
 import { resolverConteudoVersao } from "@/utils/resolverVersao";
 import { correspondeBusca } from "@/utils/busca";
+import { ordenarPorCategorias } from "@/utils/categorias";
+import { useCategorias } from "@/lib/categorias";
 import type { Musica } from "@/types/musica";
 import { CifraPagina } from "./CifraPagina";
 
@@ -53,6 +55,7 @@ export function MusicaList() {
   const [musicas, setMusicas] = useState<Musica[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
+  const ordemCategorias = useCategorias();
   const [categoria, setCategoria] = useState("");
   const [tempo, setTempo] = useState("");
   const [activeRepertorios, setActiveRepertorios] = useState<Repertorio[]>([]);
@@ -207,8 +210,8 @@ export function MusicaList() {
   }, []);
 
   const categoriasUnicas = useMemo(() => {
-    return Array.from(new Set(musicas.map((m) => m.categoria))).sort();
-  }, [musicas]);
+    return ordenarPorCategorias(Array.from(new Set(musicas.map((m) => m.categoria))), ordemCategorias);
+  }, [musicas, ordemCategorias]);
 
   const temposUnicos = useMemo(() => {
     return Array.from(new Set(musicas.map((m) => m.tempo))).sort();

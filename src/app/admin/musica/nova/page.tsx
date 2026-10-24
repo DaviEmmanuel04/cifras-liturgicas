@@ -14,12 +14,14 @@ import { obterEstiloTempoLiturgico } from "@/utils/tempoLiturgico";
 import type { SecaoTablatura } from "@/types/tablatura";
 import { tablaturasParaFirestore } from "@/utils/tablaturaFirestore";
 import { extrairIdYoutube } from "@/utils/youtube";
+import { useCategorias } from "@/lib/categorias";
+import { opcoesDeCategoria } from "@/utils/categorias";
 
-const categorias = ["Entrada", "Ato Penitencial", "Glória", "Salmo", "Aclamação ao Evangelho", "Ofertório", "Santo", "Comunhão", "Ação de Graças", "Final", "Adoração", "Terço", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 const tempos = ["Tempo Comum", "Advento", "Natal", "Quaresma", "Páscoa", "Festa de Santo Antônio", "Festa do Sagrado Coração de Jesus", "Outros"];
 
 export default function NovaMusicaPage() {
   const router = useRouter();
+  const categorias = useCategorias();
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [mostrarAvisoPdf, setMostrarAvisoPdf] = useState(false);
@@ -223,7 +225,7 @@ export default function NovaMusicaPage() {
                 className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
               >
                 <option value="" disabled>Selecione uma categoria</option>
-                {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+                {opcoesDeCategoria(categorias, formData.categoria).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
