@@ -97,6 +97,8 @@ export default function NovaMusicaPage() {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const text = formData.letraCifra;
+    // Trocar o value e devolver o foco faz o navegador rolar a caixa para o fim
+    const scrollTop = textarea.scrollTop;
 
     const before = text.substring(0, start);
     const selected = text.substring(start, end);
@@ -107,8 +109,9 @@ export default function NovaMusicaPage() {
     setFormData({ ...formData, letraCifra: novoTexto });
 
     setTimeout(() => {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       textarea.setSelectionRange(start + 1, end + 1);
+      textarea.scrollTop = scrollTop;
     }, 0);
   };
 
