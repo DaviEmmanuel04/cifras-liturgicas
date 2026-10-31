@@ -11,6 +11,7 @@ import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
 import { resolverConteudoVersao } from "@/utils/resolverVersao";
 import { correspondeBusca } from "@/utils/busca";
+import { removerFormatacao } from "@/utils/formatacaoCifra";
 import { ordenarPorCategorias } from "@/utils/categorias";
 import { useCategorias } from "@/lib/categorias";
 import type { Musica } from "@/types/musica";
@@ -35,9 +36,10 @@ function obterTrechoLetra(letraCifra: string, maxLength = 90): string {
     .filter(linha => {
       if (!linha) return false;
       if (linha.endsWith(":")) return false;
-      if (linha.startsWith("**") && (linha.endsWith("**") || linha.includes("**"))) return false;
+      if (linha.startsWith("**") && linha.endsWith("**")) return false;
       return true;
-    });
+    })
+    .map(removerFormatacao);
   const textoCorrido = linhasLimpas.join(" ");
   if (textoCorrido.length <= maxLength) return textoCorrido;
   return textoCorrido.substring(0, maxLength).trim() + "...";

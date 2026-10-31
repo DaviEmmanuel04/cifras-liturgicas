@@ -9,7 +9,7 @@ import {
   LineToken, 
   WordToken 
 } from "@/utils/cifraParser";
-import { Sparkles, Edit3, Type, Check, Trash2, Music, X, Plus } from "lucide-react";
+import { Sparkles, Edit3, Type, Check, Trash2, Music, X, Plus, Bold, Italic } from "lucide-react";
 
 interface InteractiveCifraEditorProps {
   value: string;
@@ -31,6 +31,38 @@ export function InteractiveCifraEditor({
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
   const [inputChord, setInputChord] = useState<string>("");
   const popoverInputRef = useRef<HTMLInputElement>(null);
+  const textareaRefInterno = useRef<HTMLTextAreaElement>(null);
+  const refTextarea = textareaRef ?? textareaRefInterno;
+
+  // Envolve a seleção do Modo Texto com o marcador (** negrito, * itálico)
+  const aplicarFormatacao = (marcador: "**" | "*") => {
+    const textarea = refTextarea.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    // Trocar o value e devolver o foco faz o navegador rolar a caixa para o fim
+    const scrollTop = textarea.scrollTop;
+    onChange(value.substring(0, start) + marcador + value.substring(start, end) + marcador + value.substring(end));
+
+    setTimeout(() => {
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(start + marcador.length, end + marcador.length);
+      textarea.scrollTop = scrollTop;
+    }, 0);
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const tecla = e.key.toLowerCase();
+    if (tecla === "b") {
+      e.preventDefault();
+      aplicarFormatacao("**");
+    } else if (tecla === "i") {
+      e.preventDefault();
+      aplicarFormatacao("*");
+    }
+  };
 
   // Parsing da string atual em tokens
   const lineTokens = useMemo(() => {
@@ -235,6 +267,27 @@ export function InteractiveCifraEditor({
           </button>
         </div>
 
+        {mode === "texto" && (
+          <div className="flex gap-1 bg-white p-1 rounded-lg shadow-xs border border-gray-200">
+            <button
+              type="button"
+              onClick={() => aplicarFormatacao("**")}
+              className="p-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all cursor-pointer"
+              title="Negrito (Ctrl+B) — ex: **Bis**"
+            >
+              <Bold size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => aplicarFormatacao("*")}
+              className="p-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all cursor-pointer"
+              title="Itálico (Ctrl+I) — ex: *(2x)*"
+            >
+              <Italic size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Botões de Ação Extras (Importar PDF, etc.) */}
         {extraHeaderActions && (
           <div className="flex items-center gap-2">
@@ -259,12 +312,13 @@ export function InteractiveCifraEditor({
       {mode === "texto" ? (
         /* MODO TEXTO TRADICIONAL */
         <textarea
-          ref={textareaRef}
+          ref={refTextarea}
           name="letraCifra"
           required
           rows={14}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleTextareaKeyDown}
           placeholder={`Digite ou cole a letra e cifra aqui...\nExemplo:\nIntro:\n[Dm] [G7]\n\n[C]Senhor, tende pi[G]edade de nós [C]`}
           className="w-full p-4 border border-gray-300 rounded-xl bg-white font-mono text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-y leading-relaxed"
         />

@@ -25,7 +25,7 @@ A YouTube video linked to a Versão, shown publicly on the cifra page as a perfo
 The Música-level fallback Vídeo de Referência, used by any Versão that has neither its own video nor an explicit suppression. Independent of Versão Principal — promoting a different Versão to principal does not change it.
 
 **Cifra**:
-The chord-chart representation of a Versão's lyrics: the sung text with chord symbols placed inline (e.g. `[C] Senhor, tende pie[G]dade`). Stored as the `letraCifra` field. Rendered by `CifraRenderer`, displayed by `CifraViewer`, edited via the `InteractiveCifraEditor`.
+The chord-chart representation of a Versão's lyrics: the sung text with chord symbols placed inline (e.g. `[C] Senhor, tende pie[G]dade`). Stored as the `letraCifra` field. The text may carry inline `**negrito**` and `*itálico*` (e.g. to mark repetitions); formatting can span chords but never crosses a line, and an unpaired marker stays literal. A line that is *entirely* `**…**` with no chords is a section title, not bold text. Rendered by `CifraRenderer`, displayed by `CifraViewer`, edited via the `InteractiveCifraEditor`.
 _Avoid_: Letra (the words alone, without chords), Partitura
 
 **Tom**:
