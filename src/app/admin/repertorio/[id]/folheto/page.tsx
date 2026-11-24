@@ -1,15 +1,16 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { ArrowLeft, FileDown, Printer, Save } from "lucide-react";
+import { ArrowLeft, FileDown, Pencil, Printer, Save } from "lucide-react";
 import { db, auth } from "@/lib/firebase";
 import { FolhetoLivreto, type CanticoFolheto } from "@/components/FolhetoLivreto";
+import { EditorAvisos } from "@/components/EditorAvisos";
 import { coresLiturgicas, variaveisDaPaleta, type LiturgicalColor } from "@/components/LiturgicalThemeProvider";
 import { getLiturgicalDayByDate } from "@/app/actions";
-import { estrofesDaLetra } from "@/utils/folheto";
+import { estrofesDaLetra, interpretarAvisos } from "@/utils/folheto";
 import { resolverConteudoVersao } from "@/utils/resolverVersao";
 import { tablaturasDeFirestore } from "@/utils/tablaturaFirestore";
 import { versoesDeFirestore } from "@/utils/versaoFirestore";
@@ -51,6 +52,15 @@ export default function FolhetoPage({ params }: { params: Promise<{ id: string }
   const [sujo, setSujo] = useState(false);
   const [modoImpressao, setModoImpressao] = useState<"livreto" | "digital">("livreto");
   const corEfetiva: LiturgicalColor = corEscolhida === "auto" ? corDoDia ?? "green" : corEscolhida;
+  const [editandoAvisos, setEditandoAvisos] = useState(false);
+  const fecharEditorAvisos = useCallback(() => setEditandoAvisos(false), []);
+
+  // Resumo para a barra lateral: quantos avisos e as primeiras linhas, sem marcação
+  const resumoAvisos = useMemo(() => {
+    const paragrafos = interpretarAvisos(avisos);
+    const linhas = paragrafos.flat().map((linha) => linha.trechos.map((t) => t.texto).join(""));
+    return { total: paragrafos.length, linhas: linhas.slice(0, 3) };
+  }, [avisos]);
 
   useEffect(() => {
     async function carregar() {
@@ -228,24 +238,28 @@ export default function FolhetoPage({ params }: { params: Promise<{ id: string }
 
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Avisos</label>
-          <textarea
-            rows={8}
-            value={avisos}
-            onChange={(e) => {
-              setAvisos(e.target.value);
-              setSujo(true);
-            }}
-            placeholder={"# Agenda da semana\n- Terço na **quarta**, às 19h\n- Reunião da *Pastoral*\n\nSepare os avisos com uma linha em branco."}
-            className="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm font-mono focus:ring-2 focus:ring-primary-500 outline-none resize-y"
-          />
-          <div className="text-[10px] text-gray-500 mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5">
-            <span><code>**texto**</code> negrito</span>
-            <span><code>*texto*</code> itálico</span>
-            <span><code>- item</code> lista</span>
-            <span><code>1. item</code> numerada</span>
-            <span><code># título</code> subtítulo</span>
-            <span>linha em branco: novo aviso</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setEditandoAvisos(true)}
+            className="w-full text-left p-3 border border-gray-300 hover:border-primary-400 rounded-lg bg-white transition-colors group"
+          >
+            {resumoAvisos.linhas.length === 0 ? (
+              <span className="text-sm text-gray-400">Nenhum aviso. Saem na contracapa.</span>
+            ) : (
+              <>
+                <span className="block text-[11px] font-semibold text-gray-500 mb-1">
+                  {resumoAvisos.total} aviso{resumoAvisos.total === 1 ? "" : "s"}
+                </span>
+                {resumoAvisos.linhas.map((linha, i) => (
+                  <span key={i} className="block text-sm text-gray-700 truncate">{linha}</span>
+                ))}
+              </>
+            )}
+            <span className="flex items-center gap-1.5 mt-2 text-xs font-semibold text-primary-700 group-hover:text-primary-900">
+              <Pencil size={13} />
+              Editar avisos
+            </span>
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -308,6 +322,18 @@ export default function FolhetoPage({ params }: { params: Promise<{ id: string }
           modoImpressao={modoImpressao}
         />
       </div>
+
+      {editandoAvisos && (
+        <EditorAvisos
+          valor={avisos}
+          onChange={(novo) => {
+            setAvisos(novo);
+            setSujo(true);
+          }}
+          onFechar={fecharEditorAvisos}
+          cor={corEfetiva}
+        />
+      )}
     </div>
   );
 }
