@@ -7,8 +7,11 @@ import { db, auth } from "@/lib/firebase";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle, Layers, BookOpen } from "lucide-react";
+import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle, Layers, BookOpen, ArrowDownUp } from "lucide-react";
 import type { Musica } from "@/types/musica";
+import { useCategorias } from "@/lib/categorias";
+import { ordenarPelaMissa } from "@/utils/seletorMusicas";
+import { SeletorMusicas } from "./SeletorMusicas";
 
 type Repertorio = {
   id: string;
@@ -104,7 +107,7 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
   const [ativoEdicao, setAtivoEdicao] = useState(false);
   const [musicasIds, setMusicasIds] = useState<string[]>([]);
   const [versoesFixadas, setVersoesFixadas] = useState<Record<string, string>>({});
-  const [selectedMusicId, setSelectedMusicId] = useState("");
+  const ordemCategorias = useCategorias();
 
   // Inicializar data padrão como a data atual local
   useEffect(() => {
@@ -145,7 +148,6 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
     setAtivoEdicao(rep.ativo);
     setMusicasIds(rep.musicasIds || []);
     setVersoesFixadas(rep.versoesFixadas || {});
-    setSelectedMusicId("");
   };
 
   // Cadastrar novo repertório
@@ -219,15 +221,12 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
     }
   };
 
-  const handleAddMusic = () => {
-    if (selectedMusicId && !musicasIds.includes(selectedMusicId)) {
-      setMusicasIds([...musicasIds, selectedMusicId]);
-      setSelectedMusicId("");
-    }
+  const handleAddMusic = (id: string) => {
+    setMusicasIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
   };
 
   const handleRemoveMusic = (id: string) => {
-    setMusicasIds(musicasIds.filter((i) => i !== id));
+    setMusicasIds((ids) => ids.filter((i) => i !== id));
   };
 
   // Fixa (ou, com `versaoId` vazio, desfixa — volta a seguir a Principal) a
@@ -375,32 +374,36 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Adicionar Músicas */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-6">
-          <select
-            value={selectedMusicId}
-            onChange={(e) => setSelectedMusicId(e.target.value)}
-            className="flex-1 p-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-          >
-            <option value="">Selecione uma música para adicionar ao repertório...</option>
-            {musicas.map((m) => (
-              <option key={m.id} value={m.id} disabled={musicasIds.includes(m.id)}>
-                {m.titulo} ({m.categoria})
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleAddMusic}
-            disabled={!selectedMusicId}
-            className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 text-gray-800 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Adicionar
-          </button>
+        <div>
+          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Adicionar Músicas</h3>
+          <SeletorMusicas
+            musicas={musicas}
+            selecionadas={musicasIds}
+            onAdicionar={handleAddMusic}
+            onRemover={handleRemoveMusic}
+          />
         </div>
 
         {/* Lista Arrastável */}
         <div className="bg-[#fbf9f4] p-4 rounded-xl border border-[#e4ded0]/80">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Ordem de Execução</h3>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Ordem de Execução {musicasIds.length > 0 && <span className="text-gray-400">({musicasIds.length})</span>}
+            </h3>
+            {musicasIds.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setMusicasIds((ids) => ordenarPelaMissa(ids, musicas, ordemCategorias))}
+                title="Reorganiza pela ordem das categorias (Entrada, Ato Penitencial, Glória...)"
+                className="flex items-center gap-1 text-[11px] font-semibold text-primary-700 hover:text-primary-900 hover:bg-primary-50 px-2 py-1 rounded-md transition-colors"
+              >
+                <ArrowDownUp size={12} />
+                Ordenar pela missa
+              </button>
+            )}
+          </div>
           {musicasIds.length === 0 ? (
             <div className="text-center py-10 text-gray-500 border-2 border-dashed border-[#e4ded0] rounded-lg text-sm">
               <FileText className="mx-auto text-gray-400 mb-2" size={32} />
@@ -429,7 +432,8 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
             </DndContext>
           )}
         </div>
-        
+        </div>
+
         {/* Rodapé do Editor */}
         <div className="mt-6 pt-4 border-t border-[#e4ded0] flex justify-between items-center text-xs text-gray-400">
           <div>
