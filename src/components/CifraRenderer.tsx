@@ -2,7 +2,7 @@ import React from "react";
 import { transporAcorde } from "@/utils/transposicao";
 import { removerFormatacao, segmentarLinha, TrechoFormatado } from "@/utils/formatacaoCifra";
 
-function Trechos({ trechos }: { trechos: TrechoFormatado[] }) {
+export function Trechos({ trechos }: { trechos: TrechoFormatado[] }) {
   return (
     <>
       {trechos.map((trecho, idx) => (

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle, Layers } from "lucide-react";
+import { GripVertical, X, Save, Plus, ArrowLeft, Calendar, FileText, Trash2, CheckCircle2, AlertCircle, Layers, BookOpen } from "lucide-react";
 import type { Musica } from "@/types/musica";
 
 type Repertorio = {
@@ -87,6 +88,7 @@ function SortableItem({
 }
 
 export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
+  const router = useRouter();
   const [repertorios, setRepertorios] = useState<Repertorio[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -242,7 +244,16 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
 
   // Salvar alterações do repertório selecionado (incluindo metadados)
   const handleSaveRepertorio = async () => {
-    if (!selectedRepId) return;
+    if (await salvarRepertorio()) alert("Repertório atualizado com sucesso!");
+  };
+
+  // O Folheto lê o Repertório salvo — salva antes para não sair sem as últimas mudanças
+  const handleAbrirFolheto = async () => {
+    if (await salvarRepertorio()) router.push(`/admin/repertorio/${selectedRepId}/folheto`);
+  };
+
+  const salvarRepertorio = async (): Promise<boolean> => {
+    if (!selectedRepId) return false;
     setSaving(true);
     try {
       const emailUsuario = auth.currentUser?.email || "admin";
@@ -268,11 +279,11 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
         prev.map(r => (r.id === selectedRepId ? { ...r, ...payload } : r))
             .sort((a, b) => b.data.localeCompare(a.data))
       );
-      
-      alert("Repertório atualizado com sucesso!");
+      return true;
     } catch (e) {
       console.error("Erro ao atualizar o repertório:", e);
       alert("Erro ao salvar as alterações do repertório.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -304,6 +315,15 @@ export function RepertorioManager({ musicas }: { musicas: Musica[] }) {
           </button>
           
           <div className="flex gap-2">
+            <button
+              onClick={handleAbrirFolheto}
+              disabled={saving || !nomeEdicao.trim() || !dataEdicao}
+              title="Salva o Repertório e monta o folheto"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 disabled:opacity-50 border border-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <BookOpen size={16} />
+              Folheto
+            </button>
             <button
               onClick={handleSaveRepertorio}
               disabled={saving || !nomeEdicao.trim() || !dataEdicao}

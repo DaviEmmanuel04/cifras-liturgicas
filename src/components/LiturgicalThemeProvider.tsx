@@ -21,6 +21,26 @@ const LiturgicalThemeContext = createContext<LiturgicalContextType>({
   setMode: () => {}
 });
 
+export const coresLiturgicas: { cor: LiturgicalColor; nome: string }[] = [
+  { cor: 'green', nome: 'Verde' },
+  { cor: 'violet', nome: 'Roxo' },
+  { cor: 'white', nome: 'Branco' },
+  { cor: 'red', nome: 'Vermelho' },
+  { cor: 'rose', nome: 'Rosa' },
+  { cor: 'blue', nome: 'Azul' },
+  { cor: 'black', nome: 'Preto' },
+];
+
+/**
+ * Variáveis `--primary-*` de uma paleta, para aplicar num trecho da página
+ * (ex. o Folheto) sem mexer no tema global — e sem ser afetado pelo azul
+ * forçado no `:root` na impressão.
+ */
+export function variaveisDaPaleta(cor: LiturgicalColor): React.CSSProperties {
+  const palette = colorPalettes[cor] || colorPalettes.blue;
+  return Object.fromEntries(Object.entries(palette).map(([shade, hex]) => [`--primary-${shade}`, hex]));
+}
+
 const colorPalettes: Record<LiturgicalColor, Record<string, string>> = {
   green: { // Verde Oliva/Floresta Litúrgico
     '50': '#f2f6f1',

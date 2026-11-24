@@ -22,12 +22,12 @@ type Peca =
  * (`**[C]Senhor, tende pie[G]dade**`), mas nunca atravessa linhas. Um marcador
  * sem par na mesma linha é mantido como texto literal.
  */
-export function segmentarLinha(linha: string): SegmentoCifra[] {
+export function segmentarLinha(linha: string, { comAcordes = true } = {}): SegmentoCifra[] {
   const pecas: Peca[] = linha
-    .split(/(\[.*?\]|\*\*|\*)/g)
+    .split(comAcordes ? /(\[.*?\]|\*\*|\*)/g : /(\*\*|\*)/g)
     .filter((parte) => parte.length > 0)
     .map((parte): Peca => {
-      if (parte.startsWith("[") && parte.endsWith("]")) return { tipo: "acorde", valor: parte.slice(1, -1) };
+      if (comAcordes && parte.startsWith("[") && parte.endsWith("]")) return { tipo: "acorde", valor: parte.slice(1, -1) };
       if (parte === "**" || parte === "*") return { tipo: "marcador", valor: parte };
       return { tipo: "texto", valor: parte };
     });
@@ -67,6 +67,11 @@ export function segmentarLinha(linha: string): SegmentoCifra[] {
   }
 
   return segmentos;
+}
+
+/** Negrito e itálico de um texto comum, sem acordes — colchetes ficam como texto. */
+export function formatarTexto(texto: string): TrechoFormatado[] {
+  return segmentarLinha(texto, { comAcordes: false }).flatMap((seg) => seg.trechos);
 }
 
 /** Remove os marcadores de formatação, deixando só o texto (acordes intactos). */

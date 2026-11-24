@@ -73,3 +73,10 @@ A Técnica de Execução marking pitch oscillation on a single Nota. Unlike Liga
 
 **Casa**:
 A fret position on the neck: an integer from 0 (corda solta) upward. Casa numbers on a Nota are always absolute — unlike `ChordShape.baseFret`, a Passo has no visual windowing. Also the unit a Capotraste is expressed in, but there it's a single value for a whole Versão's display, not a per-Nota value inside a Passo.
+
+**Repertório**:
+An ordered list of Músicas for one celebração (name + date), optionally pinning a Versão per item; stored in the `repertorios` collection. Marked `ativo` to appear on the home page.
+
+**Folheto**:
+The printed booklet of cânticos handed to the assembleia, generated from a Repertório — never selected separately. Shows only the lyrics (no acordes) of each item's Versão, in Repertório order, with a capa (Comunidade, celebração, date), an índice with page numbers, and optional Avisos on the contracapa. Laid out as A5 pages that never split an estrofe, then imposed onto A4 sheets printed frente e verso and folded into a livreto. The Comunidade name is global (`config/folheto`); Avisos belong to the Repertório (`avisosFolheto`).
+_Avoid_: Livreto, Encarte (as the modeled term)

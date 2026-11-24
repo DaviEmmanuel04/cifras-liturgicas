@@ -21,6 +21,25 @@ export async function getLiturgicalDay() {
   }
 }
 
+/** Como `getLiturgicalDay`, mas para uma data `YYYY-MM-DD` (ex. a de um Repertório). */
+export async function getLiturgicalDayByDate(data: string) {
+  const partes = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!partes) return null;
+  try {
+    const [, ano, mes, dia] = partes;
+    const res = await fetch(`http://calapi.inadiutorium.cz/api/v0/en/calendars/default/${ano}/${mes}/${dia}`, {
+      next: { revalidate: 86400 }
+    });
+    if (!res.ok) {
+      throw new Error(`Erro na API: ${res.status}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("Falha no fetch do servidor para o calapi:", error);
+    return null;
+  }
+}
+
 export async function convertPdfAction(formData: FormData): Promise<{ success: boolean; text?: string; error?: string }> {
   try {
     const file = formData.get("file") as File;
